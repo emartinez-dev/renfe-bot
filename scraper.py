@@ -14,7 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from constants import *
 from parse_data import clear_dataframe, parse_table
-from utils import convert_date_string
+from utils import convert_date_string, format_time
 
 
 class RenfeScraper:
@@ -128,3 +128,45 @@ class RenfeScraper:
 			raise Exception("No trains found")
 		self.df = pd.DataFrame(data)
 		self.df = clear_dataframe(self.df)
+
+	def check_origin_ticket(self, train_filter):
+		df = self.df
+		tickets = df[df['direction'] == 'ida']
+		tickets = tickets[tickets['status'] == 'available']
+		if train_filter is not None:
+			if 'train_type' in train_filter:
+				tickets = tickets[tickets['train_type'] == train_filter['train_type']]
+			if 'max_price' in train_filter:
+				tickets = tickets[tickets['price'] <= train_filter['max_price']]
+			if 'max_duration' in train_filter:
+				tickets = tickets[tickets['duration'] <= train_filter['max_duration']]
+			if 'ida_earliest' in train_filter:
+				tickets = tickets[tickets['time_of_departure'] >= train_filter['ida_earliest']]
+			if 'ida_latest' in train_filter:
+				tickets = tickets[tickets['time_of_departure'] <= train_filter['ida_latest']]
+		if len(tickets) == 0:
+			return False, None
+		print("Origin tickets found")
+		return True, tickets
+
+	def check_destination_ticket(self, train_filter):
+		df = self.df
+		tickets = df[df['direction'] == 'vuelta']
+		tickets = tickets[tickets['status'] == 'available']
+		if train_filter is not None:
+			if 'train_type' in train_filter:
+				tickets = tickets[tickets['train_type'] == train_filter['train_type']]
+			if 'max_price' in train_filter:
+				tickets = tickets[tickets['price'] <= train_filter['max_price']]
+			if 'max_duration' in train_filter:
+				tickets = tickets[tickets['duration'] <= train_filter['max_duration']]
+			if 'ida_earliest' in train_filter:
+				tickets = tickets[tickets['time_of_departure'] >= train_filter['vuelta_earliest']]
+			if 'ida_latest' in train_filter:
+				tickets = tickets[tickets['time_of_departure'] <= train_filter['vuelta_latest']]
+		if len(tickets) == 0:
+			return False, None
+		print("Destination tickets found")
+		return True, tickets
+
+

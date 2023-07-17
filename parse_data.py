@@ -1,6 +1,6 @@
 import pandas as pd
 
-from utils import calculate_duration
+from utils import calculate_duration, format_time
 
 def parse_table(table, direction):
 	ida_data = []
@@ -34,7 +34,7 @@ def parse_table(table, direction):
 
 def clear_dataframe(df):
 	df['duration'] = df.apply(lambda row: calculate_duration(row['time_of_departure'], row['time_of_arrival']), axis=1)
-	df['time_of_departure'] = pd.to_datetime(df['time_of_departure'], format='%H.%M').dt.time
-	df['time_of_arrival'] = pd.to_datetime(df['time_of_arrival'], format='%H.%M').dt.time
+	df['time_of_departure'] = format_time(df['time_of_departure'])
+	df['time_of_arrival'] = format_time(df['time_of_arrival'])
 	df['price'] = df['price'].str.replace(',', '.').str.replace(' €', '').astype(float)
 	return df

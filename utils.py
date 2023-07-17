@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import pandas as pd
 
 def convert_date_string(date_str):
 	# Define the format of the input date string
@@ -18,3 +19,6 @@ def calculate_duration(start_time, end_time):
 
     duration = (datetime.combine(datetime.min.date(), end) - datetime.combine(datetime.min.date(), start)).total_seconds() / 3600
     return duration
+
+def format_time(time):
+	return pd.to_datetime(time, format='%H.%M')

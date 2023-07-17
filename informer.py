@@ -23,6 +23,8 @@ class Informer:
 		origin_ticket = False
 		destination_ticket = False
 		while not origin_ticket or not destination_ticket:
+			time.sleep(60)
+			scraper.driver.refresh()
 			scraper.get_results()
 			if not origin_ticket:
 				origin_ticket, self.origin_ticket = scraper.check_origin_ticket(filter)
@@ -36,8 +38,6 @@ class Informer:
 					print(self.destination_ticket)
 					self.notify("Destination tickets found!")
 					self.notify(self.destination_ticket.to_string())
-			time.sleep(60)
-			scraper.driver.refresh()
 	def notify(self, message):
 		url = f"https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
 		requests.get(url).json()
@@ -48,12 +48,12 @@ departure_date = "18-07-2023 00:00"
 return_date = "20-07-2023 00:00"
 
 train_filter = {
-	"max_price": 70,
-	"max_duration": 3,
+	"max_price": 20,
+	"max_duration": 4,
 	"ida_earliest": format_time("08.00"),
 	"ida_latest": format_time("15.00"),
 	"vuelta_earliest": format_time("08.00"),
-	"vuelta_latest": format_time("14.00"),
+	"vuelta_latest": format_time("22.00"),
 }
 
 informer = Informer(origin_station, destination_station, departure_date, return_date)

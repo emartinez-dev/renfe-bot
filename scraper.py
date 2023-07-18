@@ -12,13 +12,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from constants import *
 from parse_data import clear_dataframe, parse_table
-from utils import convert_date_string, format_time
-
+from utils import str_to_dt, format_time
 
 class RenfeScraper:
+
 	def __init__(self):
+		HOME_RENFE = "https://www.renfe.com/es/es"
 		service_object = Service(binary_path)
 		driver = webdriver.Chrome(service=service_object)
 		driver.implicitly_wait(10)
@@ -26,7 +26,14 @@ class RenfeScraper:
 		self.driver = driver
 		self.train_data = []
 
+	def find_trains(self, origin_name:str, destination_name:str, origin_date:str, destination_date:str):
+		self.search_stations(origin_name, destination_name)
+		self.search_dates(origin_date, destination_date)
+
 	def search_stations(self, origin_name:str, destination_name:str):
+		ORIGIN_SELECTOR = "input#origin"
+		DESTINATION_SELECTOR = "input#destination"
+
 		driver = self.driver
 		actions = ActionChains(driver)
 		origin_element = driver.find_element(By.CSS_SELECTOR, ORIGIN_SELECTOR)
@@ -46,67 +53,45 @@ class RenfeScraper:
 
 	def search_dates(self, origin_date:str, destination_date:str):
 		# date format: "DD-MM-YYYY HH:MM"
-		driver = self.driver
-		datetime_origin = convert_date_string(origin_date)
-		datetime_destination = convert_date_string(destination_date)
-		datetime_yesterday = datetime.now() - timedelta(days=1)
-		ts_origin = int(datetime_origin.timestamp()) * 1000
-		ts_destination = int(datetime_destination.timestamp()) * 1000
-		if ts_destination < ts_origin or datetime_origin < datetime_yesterday:
+		dt_origin = str_to_dt(origin_date)
+		dt_destination = str_to_dt(destination_date)
+		dt_yesterday = datetime.now() - timedelta(days=1)
+
+		# the datepicker accepts timestamps in milliseconds
+		ts_origin = int(dt_origin.timestamp()) * 1000
+		ts_destination = int(dt_destination.timestamp()) * 1000
+		ts_origin_selector = f'div[data-time="{ts_origin}"]'
+		ts_destination_selector = f'div[data-time="{ts_destination}"]'
+
+		# this check should be done before even starting the scraper
+		if ts_destination < ts_origin or dt_origin < dt_yesterday:
 			raise Exception("You can't go back in time")
-		actions = ActionChains(driver)
-		open_date_element = driver.find_element(By.CSS_SELECTOR, OPEN_DATE_SELECTOR)
-		actions.move_to_element(open_date_element).click()
-		actions.perform()
 
-		actions = ActionChains(driver)
-		wait = WebDriverWait(driver, 10)
-		delete_css = "button.lightpick__delete-action"
-		delete_button = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, delete_css)))
+		# datepicker selectors
+		DATE_OPEN_SELECTOR = "input#first-input"
+		DELETE_BUTTON_SELECTOR = "button.lightpick__delete-action"
+		APPLY_BUTTON_SELECTOR = "button.lightpick__apply-action-sub"
+		SEARCH_BUTTON_SELECTOR = 'button[title="Buscar billete"]'
 
-		actions.move_to_element(delete_button).click()
-		actions.perform()
-
-		element1 = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, f'div[data-time="{ts_origin}"]')))
-		actions = ActionChains(driver)
-		max_retries = 3
-		num_retries = 0
-		while num_retries < max_retries:
-			try:
-				actions.move_to_element(element1).click()
-				actions.perform()
-				break
-			except StaleElementReferenceException:
-				num_retries += 1
-				element1 = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, f'div[data-time="{ts_origin}"]')))
-
-		element2 = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, f'div[data-time="{ts_destination}"]')))
-
-		actions = ActionChains(driver)
-		max_retries = 3
-		num_retries = 0
-		while num_retries < max_retries:
-				try:
-					actions.move_to_element(element2).click()
-					actions.perform()
-					break
-				except StaleElementReferenceException:
-					num_retries += 1
-					element2 = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, f'div[data-time="{ts_destination}"]')))
-
-		button_css = "button.lightpick__apply-action-sub"
-		search_css = 'button[title="Buscar billete"]'
-
-		actions = ActionChains(driver)
-		apply_button = driver.find_element(By.CSS_SELECTOR, button_css)
-		submit_button = driver.find_element(By.CSS_SELECTOR, search_css)
-		actions.move_to_element(apply_button).click()
-		actions.move_to_element(submit_button).click()
-		actions.perform()
+		# datepicker part
+		self.find_and_click_with_retry(DATE_OPEN_SELECTOR)
+		self.find_and_click_with_retry(DELETE_BUTTON_SELECTOR)
+		self.find_and_click_with_retry(ts_origin_selector)
+		self.find_and_click_with_retry(ts_destination_selector)
+		# apply and search
+		self.find_and_click_with_retry(APPLY_BUTTON_SELECTOR)
+		self.find_and_click_with_retry(SEARCH_BUTTON_SELECTOR)
+		# check if the trains page is correctly loaded
+		wait = WebDriverWait(self.driver, 10)
+		train_list_selector = "#listaTrenesTable"
+		try:
+			wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, train_list_selector)))
+			print("Trains page loaded")
+		except Exception:
+			print("Trains page couldn't be loaded")
 
 	def get_results(self):
 		driver = self.driver
-		assert "Lista de Trenes" in driver.title
 		actions = ActionChains(driver)
 		wait = WebDriverWait(driver, 10)
 		element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "#listaTrenesTBodyIda > tr")))
@@ -129,9 +114,9 @@ class RenfeScraper:
 		self.df = pd.DataFrame(data)
 		self.df = clear_dataframe(self.df)
 
-	def check_origin_ticket(self, train_filter):
+	def check_tickets(self, direction, earliest_key, latest_key, train_filter):
 		df = self.df
-		tickets = df[df['direction'] == 'ida']
+		tickets = df[df['direction'] == direction]
 		tickets = tickets[tickets['status'] == 'available']
 		if train_filter is not None:
 			if 'train_type' in train_filter:
@@ -140,33 +125,33 @@ class RenfeScraper:
 				tickets = tickets[tickets['price'] <= train_filter['max_price']]
 			if 'max_duration' in train_filter:
 				tickets = tickets[tickets['duration'] <= train_filter['max_duration']]
-			if 'ida_earliest' in train_filter:
-				tickets = tickets[tickets['time_of_departure'] >= train_filter['ida_earliest']]
-			if 'ida_latest' in train_filter:
-				tickets = tickets[tickets['time_of_departure'] <= train_filter['ida_latest']]
+			if earliest_key in train_filter:
+				tickets = tickets[tickets['time_of_departure'] >= train_filter[earliest_key]]
+			if latest_key in train_filter:
+				tickets = tickets[tickets['time_of_departure'] <= train_filter[latest_key]]
 		if len(tickets) == 0:
 			return False, None
-		print("Origin tickets found")
+		print(f"{direction.capitalize()} tickets found")
 		return True, tickets
+
+	def check_origin_ticket(self, train_filter):
+		return self.check_tickets('ida', 'ida_earliest', 'ida_latest', train_filter)
 
 	def check_destination_ticket(self, train_filter):
-		df = self.df
-		tickets = df[df['direction'] == 'vuelta']
-		tickets = tickets[tickets['status'] == 'available']
-		if train_filter is not None:
-			if 'train_type' in train_filter:
-				tickets = tickets[tickets['train_type'] == train_filter['train_type']]
-			if 'max_price' in train_filter:
-				tickets = tickets[tickets['price'] <= train_filter['max_price']]
-			if 'max_duration' in train_filter:
-				tickets = tickets[tickets['duration'] <= train_filter['max_duration']]
-			if 'ida_earliest' in train_filter:
-				tickets = tickets[tickets['time_of_departure'] >= train_filter['vuelta_earliest']]
-			if 'ida_latest' in train_filter:
-				tickets = tickets[tickets['time_of_departure'] <= train_filter['vuelta_latest']]
-		if len(tickets) == 0:
-			return False, None
-		print("Destination tickets found")
-		return True, tickets
+		return self.check_tickets('vuelta', 'vuelta_earliest', 'vuelta_latest', train_filter)
 
-
+	def find_and_click_with_retry(self, selector):
+		MAX_RETRIES = 3
+		driver = self.driver
+		wait = WebDriverWait(driver, 10)
+		element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
+		actions = ActionChains(driver)
+		num_retries = 0
+		while num_retries < MAX_RETRIES:
+			try:
+				actions.move_to_element(element).click()
+				actions.perform()
+				break
+			except StaleElementReferenceException:
+				num_retries += 1
+				element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))

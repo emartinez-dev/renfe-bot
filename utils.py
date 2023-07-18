@@ -1,12 +1,9 @@
 from datetime import datetime, timedelta
 import pandas as pd
 
-def convert_date_string(date_str):
-	# Define the format of the input date string
-	date_format = "%d-%m-%Y %H:%M"
-	# Convert the date string to a datetime object
-	date_obj = datetime.strptime(date_str, date_format)
-	return date_obj
+def str_to_dt(dt_str):
+	dt_format = "%d-%m-%Y %H:%M"
+	return datetime.strptime(dt_str, dt_format)
 
 def calculate_duration(start_time, end_time):
     start = datetime.strptime(start_time, '%H.%M').time()

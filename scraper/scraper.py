@@ -62,6 +62,9 @@ class RenfeScraper:
 			logger.error(f"Error loading Renfe page")
 		self.df = None
 
+	def __del__(self):
+		self.driver.quit()
+
 	def find_trains(self, origin_name:str, destination_name:str, origin_date:str, destination_date:str):
 		logger.info(f"Stations: {origin_name} -> {destination_name}")
 		self.search_stations(origin_name, destination_name)
@@ -197,7 +200,6 @@ class RenfeScraper:
 		if num_retries == MAX_RETRIES:
 			logger.error(f"Max retries exceeded for selector {selector}")
 			raise e.MaxRetriesExceeded(f"Max retries exceeded for selector {selector}")
-
 
 	def _wait_for_element(self, selector):
 		wait = WebDriverWait(self.driver, 10)

@@ -60,3 +60,10 @@ sublicense, and/or sell copies of the software, as long as you include the
 necessary attribution and provide a copy of the MIT license.
 
 You can see the full license text in the LICENSE file.
+
+## TODO
+
+- [ ] Change driver to use headless mode
+- [ ] Implement Telegram bot
+- [ ] Add installation instructions
+- [ ] Add usage instructions

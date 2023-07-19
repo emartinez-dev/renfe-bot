@@ -1,6 +1,6 @@
 import pandas as pd
 
-from utils import calculate_duration, format_time
+from scraper.utils import calculate_duration, format_time
 
 def parse_table(table, direction):
 	ida_data = []

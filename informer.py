@@ -1,9 +1,8 @@
-from scraper import RenfeScraper
-from utils import format_time
+from scraper.scraper import RenfeScraper
+from scraper.utils import format_time
 from env import TOKEN, CHAT_ID
 import time
 import requests
-import os
 
 class Informer:
 	def __init__(self, origin_station, destination_station, departure_date, return_date):

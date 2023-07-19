@@ -48,11 +48,15 @@ suggestions are equally valuable.
 
 ## License
 
-License This project is licensed under the Unlicense. The Unlicense is a license
-with no conditions whatsoever which dedicates works to the public domain.
-Unlicensed works, modifications, and larger works may be distributed under
-different terms and without source code.
+This project is licensed under the terms of the [MIT
+License](https://opensource.org/license/mit/).
 
-In other words, you're free to use this code in any way you like, modify it,
-distribute it, use it in larger works, etc., all without asking for permission
-or providing attribution.
+The MIT License is a permissive license that allows for reuse of software within
+proprietary software provided that all copies of the licensed software include a
+copy of the MIT License terms and the copyright notice.
+
+This means that you are free to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the software, as long as you include the
+necessary attribution and provide a copy of the MIT license.
+
+You can see the full license text in the LICENSE file.

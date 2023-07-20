@@ -1,8 +1,23 @@
 from scraper.scraper import RenfeScraper
 from scraper.utils import format_time
-from env import TOKEN, CHAT_ID
 import time
 import requests
+
+import configparser
+
+def prompt_credentials():
+	config = configparser.ConfigParser()
+	config.read("config.ini")
+
+	if 'Telegram' not in config:
+		config['Telegram'] = {}
+	if 'secret_token' not in config['Telegram']:
+		config['Telegram']['secret_token'] = input("Enter your Telegram bot secret token: ")
+	if 'chat_id' not in config['Telegram']:
+		config['Telegram']['chat_id'] = input("Enter your Telegram chat id: ")
+
+	with open('config.ini', 'w') as configfile:
+		config.write(configfile)
 
 class Informer:
 	def __init__(self, origin_station, destination_station, departure_date, return_date):

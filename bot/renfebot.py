@@ -1,6 +1,8 @@
-from credentials import get_token
+import os
 from textwrap import dedent
+
 import telebot
+from credentials import get_token
 from utils import sanitize_station_input
 
 TOKEN = get_token()
@@ -18,7 +20,24 @@ def send_help(message: telebot.types.Message):
 	bot.send_message(message.chat.id, dedent("""\
 		/ayuda - Muestra los comandos disponibles
 		/buscar - Busca billetes de tren
+		/debug - Muestra información de depuración del último log
 		"""))
+
+@bot.message_handler(commands=['debug'])
+def send_debug(message: telebot.types.Message):
+	logs = os.listdir("logs")
+	user_logs = []
+	for log in logs:
+		if message.from_user.username in log:
+			user_logs.append(log)
+	if len(user_logs) == 0:
+		bot.send_message(message.chat.id, "No hay logs disponibles")
+	else:
+		bot.send_message(message.chat.id, dedent("""\
+			Envía este documento a los desarrolladores para que puedan ayudarte:
+		"""))
+		user_logs.sort(reverse=True)
+		bot.send_document(message.chat.id, open(f"logs/{user_logs[0]}", "rb"))
 
 @bot.message_handler(commands=['buscar'])
 def start(message: telebot.types.Message):
@@ -100,7 +119,7 @@ def get_ida_latest(message: telebot.types.Message, user_params):
 
 def get_vuelta_earliest(message: telebot.types.Message, user_params):
 	user_params["vuelta_earliest"] = message.text
-	bot.send_message(message.chat.id, "¿Hora de vuelta más tardía? (hh:mm)")
+	bot.send_message(message.chat.id, "¿Y cómo muy tarde? (hh:mm)")
 	bot.register_next_step_handler(message, get_vuelta_latest, user_params)
 
 def get_vuelta_latest(message: telebot.types.Message, user_params):

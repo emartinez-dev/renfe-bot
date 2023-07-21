@@ -64,6 +64,6 @@ You can see the full license text in the LICENSE file.
 ## TODO
 
 - [ ] Change driver to use headless mode
-- [ ] Implement Telegram bot
-- [ ] Add installation instructions
-- [ ] Add usage instructions
+- [x] Implement Telegram bot
+- [x] Add installation instructions
+- [x] Add usage instructions

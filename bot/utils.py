@@ -1,4 +1,6 @@
 import Levenshtein
+import json
+import os
 
 def sanitize_station_input(user_input:str):
 	with open('resources/stations.txt', 'r') as f:
@@ -17,3 +19,8 @@ def sanitize_station_input(user_input:str):
 	if closest_distance > 2:
 		return None
 	return closest_station
+
+def export_input(user_params):
+	with open('resources/last_input.json', 'w') as f:
+		json.dump(user_params, f, indent=4)
+		f.close()

@@ -28,16 +28,14 @@ class Watcher:
 		scraper.find_trains(self.origin_station, self.destination_station, \
 		    self.departure_date, self.return_date)
 		while not found_ida or not found_vuelta:
-			time.sleep(60)
-			scraper.driver.refresh()
 			scraper.get_results()
 			if not found_ida:
 				found_ida, self.tickets_ida = scraper.check_origin_ticket(filter)
-				if found_ida:
-					print(self.tickets_ida)
 			if not found_vuelta:
 				found_vuelta, self.tickets_vuelta = scraper.check_destination_ticket(filter)
-				if found_vuelta:
-					print(self.tickets_vuelta)
+			if found_ida and found_vuelta:
+				break
+			time.sleep(60)
+			scraper.driver.refresh()
 		scraper.driver.quit()
 		return self.tickets_ida, self.tickets_vuelta

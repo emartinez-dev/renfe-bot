@@ -5,7 +5,7 @@ from textwrap import dedent
 import telebot
 from credentials import get_token
 from watcher import Watcher
-from utils import sanitize_station_input, export_input, print_tickets_df
+from utils import sanitize_station_input, export_input, tickets_df_message
 from scraper.utils import format_time_user
 
 TOKEN = get_token()
@@ -159,9 +159,9 @@ def search_trains(message: telebot.types.Message, user_params):
 	searching = True
 
 	bot.send_message(message.chat.id, "🔎 Buscando billetes...")
-	bot.send_message(message.chat.id, "(hasta que la aplicación esté terminada, "\
+	bot.send_message(message.chat.id, "⚠️ (hasta que la aplicación esté terminada, "\
 		"esta búsqueda no te dejará volver a interactuar con el bot hasta que "\
-		"encuentre billetes o falle")
+		"encuentre billetes o falle)")
 
 	export_input(user_params)
 	for key, value in user_params.items():
@@ -202,17 +202,26 @@ def search_trains(message: telebot.types.Message, user_params):
 
 	# hacer comprobaciones de la fecha cuando se introduce
 
-	watcher = Watcher(watcher_params["origin_station"], watcher_params["destination_station"], \
-			watcher_params["departure_date"], watcher_params["return_date"])
-	tickets_ida, tickets_vuelta = watcher.loop(watcher_filter)
+	tickets_ida = None
+	tickets_vuelta = None
 
-	if tickets_ida:
-		bot.send_message(message.chat.id, "🎫 ¡He encontrado billetes de ida!")
-		print(tickets_ida)
+	try:
+		watcher = Watcher(watcher_params["origin_station"], watcher_params["destination_station"], \
+				watcher_params["departure_date"], watcher_params["return_date"])
+		tickets_ida, tickets_vuelta = watcher.loop(watcher_filter)
+	except:
+		bot.send_message(message.chat.id, "⚠️ Ha ocurrido un error al buscar los billetes, por favor inténtalo de nuevo")
+		searching = False
+		watcher.driver.quit()
+		return
 
-	if tickets_vuelta and watcher_params["return"] == True:
-		bot.send_message(message.chat.id, "🎫 ¡He encontrado billetes de vuelta!")
-		print(tickets_vuelta)
+	if tickets_ida is not None:
+		bot.send_message(message.chat.id, tickets_df_message(tickets_ida, \
+						       watcher_params, watcher_filter["return"]))
+
+	if tickets_vuelta is not None and watcher_params["return"] == True:
+		bot.send_message(message.chat.id, tickets_df_message(tickets_vuelta, \
+						       watcher_params, watcher_filter["return"]))
 
 	# finish search
 	searching = False

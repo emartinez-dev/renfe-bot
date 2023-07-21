@@ -9,13 +9,16 @@ exceptiongroup==1.1.2
 h11==0.14.0
 idna==3.4
 importlib-metadata==6.7.0
+Levenshtein==0.21.1
 numpy==1.21.6
 outcome==1.2.0
 pandas==1.3.5
 ply==3.11
 PySocks==1.7.1
+pyTelegramBotAPI==4.12.0
 python-dateutil==2.8.2
 pytz==2023.3
+rapidfuzz==3.1.1
 requests==2.31.0
 selenium==4.10.0
 six==1.16.0

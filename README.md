@@ -1,20 +1,23 @@
 # renfe-bot
 
+**También puedes leer esto en [Español](./docs/README_ES.md)**
+
 ## Description
 
-Renfe-bot is a handy tool designed to assist users in purchasing train tickets.
-Its primary function is to monitor ticket availability, especially in situations
-when tickets are sold out and only become available when someone cancels their
-reservation. This bot promptly notifies users when there are tickets available
-for purchase. While the current version primarily focuses on scraping data,
-future developments will include implementing a Telegram chatbot interface for
-enhanced user interaction.
+Renfe-bot is a Telegram bot designed to assist users in purchasing train tickets
+from Renfe, the main railway operator in Spain. The bot monitors ticket
+availability, especially in situations when tickets are sold out and only become
+available when someone cancels their reservation. It promptly notifies users
+when there are tickets available for purchase. The bot now supports a Telegram
+chatbot interface for enhanced user interaction.
+
+The error handling is not perfect, so if you encounter any issues, retrying the
+command should work. If the issue persists, please open an issue on GitHub.
 
 ## Requirements
 
-The required dependencies and prerequisites to run this project are included in
-the `requirements.txt` file. To install the requirements, use the following
-command:
+The required dependencies to run this project are included in the
+`requirements.txt` file. To install the requirements, use the following command:
 
 ```bash
 pip install -r requirements.txt
@@ -22,14 +25,22 @@ pip install -r requirements.txt
 
 ## Installation
 
-The installation steps are currently under development. Future updates will
-include detailed instructions on how to set up the project.
+Follow the below steps to install and set up the Renfe-bot:
+
+1. Clone this repository to your local machine.
+2. Install the required dependencies using the command mentioned in the
+   'Requirements' section.
+3. Run the bot by executing it (`python bot/renfebot.py`) in the root
+   directory of the project.
+4. Anything required like the API key will be prompted for when you run the bot
+   for the first time.
 
 ## Usage
 
-The primary usage of the project currently revolves around the scraper class,
-which performs the function of searching for available train tickets based on
-user-provided inputs such as origin and destination stations, and dates.
+To use the bot, send a message to your bot on Telegram. You need to provide
+inputs such as origin and destination stations, and dates. The bot will monitor
+the ticket availability and notify you immediately when there's a ticket
+available for your journey.
 
 ## Contributing
 

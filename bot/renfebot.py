@@ -11,6 +11,7 @@ from scraper.utils import format_time_user
 TOKEN = get_token()
 bot = telebot.TeleBot(TOKEN)
 searching = False
+print("Ya estoy corriendo! Corre a Telegram e interactúa conmigo")
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):

@@ -8,6 +8,7 @@ from utils import sanitize_station_input, export_input
 
 TOKEN = get_token()
 bot = telebot.TeleBot(TOKEN)
+searching = False
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):
@@ -51,8 +52,20 @@ def send_debug(message: telebot.types.Message):
 		user_logs.sort(reverse=True)
 		bot.send_document(message.chat.id, open(f"logs/{user_logs[0]}", "rb"))
 
+@bot.message_handler(commands=['cancelar'])
+def send_cancel(message: telebot.types.Message):
+	global searching
+	if searching:
+		searching = False
+		bot.send_message(message.chat.id, "Búsqueda cancelada")
+	else:
+		bot.send_message(message.chat.id, "No hay ninguna búsqueda en curso")
+
 @bot.message_handler(commands=['buscar'])
 def start(message: telebot.types.Message):
+	if searching:
+		bot.send_message(message.chat.id, "Ya hay una búsqueda en curso, por favor espera o utiliza /cancelar para cancelarla")
+		return
 	user_params = {}
 	bot.send_message(message.chat.id, "🚉 ¿Desde qué estación sales?")
 	bot.register_next_step_handler(message, get_origin_station, user_params)
@@ -137,9 +150,14 @@ def get_vuelta_latest(message: telebot.types.Message, user_params):
 	search_trains(message, user_params)
 
 def search_trains(message: telebot.types.Message, user_params):
+	global searching
+	searching = True
 	bot.send_message(message.chat.id, "🔎 Buscando billetes...")
 	export_input(user_params)
 	for key, value in user_params.items():
 		print(f"{key}: {value}")
+
+	# finish search
+	searching = False
 
 bot.polling()

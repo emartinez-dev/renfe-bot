@@ -62,8 +62,9 @@ def send_debug(message: telebot.types.Message):
 def send_cancel(message: telebot.types.Message):
 	global searching
 	if searching:
-		searching = False
-		bot.send_message(message.chat.id, "Búsqueda cancelada")
+		#searching = False
+		#bot.send_message(message.chat.id, "Búsqueda cancelada")
+		bot.send_message(message.chat.id, "Todavía no se pueden cancelar las búsquedas :(")
 	else:
 		bot.send_message(message.chat.id, "No hay ninguna búsqueda en curso")
 

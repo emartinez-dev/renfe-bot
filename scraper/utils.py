@@ -19,3 +19,6 @@ def calculate_duration(start_time, end_time):
 
 def format_time(time):
 	return pd.to_datetime(time, format='%H.%M')
+
+def format_time_user(time):
+    return pd.to_datetime(time, format='%H:%M')

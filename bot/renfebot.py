@@ -4,7 +4,9 @@ from textwrap import dedent
 
 import telebot
 from credentials import get_token
-from utils import sanitize_station_input, export_input
+from watcher import Watcher
+from utils import sanitize_station_input, export_input, print_tickets_df
+from scraper.utils import format_time_user
 
 TOKEN = get_token()
 bot = telebot.TeleBot(TOKEN)
@@ -28,6 +30,9 @@ def send_help(message: telebot.types.Message):
 
 @bot.message_handler(commands=['reintentar'])
 def send_retry(message: telebot.types.Message):
+	if searching:
+		bot.send_message(message.chat.id, "Ya hay una búsqueda en curso, por favor espera o utiliza /cancelar para cancelarla")
+		return
 	try:
 		with open('resources/last_input.json', 'r') as f:
 			user_params = json.load(f)
@@ -66,7 +71,7 @@ def start(message: telebot.types.Message):
 	if searching:
 		bot.send_message(message.chat.id, "Ya hay una búsqueda en curso, por favor espera o utiliza /cancelar para cancelarla")
 		return
-	user_params = {}
+	user_params = { "user_id": message.from_user.id }
 	bot.send_message(message.chat.id, "🚉 ¿Desde qué estación sales?")
 	bot.register_next_step_handler(message, get_origin_station, user_params)
 
@@ -152,10 +157,62 @@ def get_vuelta_latest(message: telebot.types.Message, user_params):
 def search_trains(message: telebot.types.Message, user_params):
 	global searching
 	searching = True
+
 	bot.send_message(message.chat.id, "🔎 Buscando billetes...")
+	bot.send_message(message.chat.id, "(hasta que la aplicación esté terminada, "\
+		"esta búsqueda no te dejará volver a interactuar con el bot hasta que "\
+		"encuentre billetes o falle")
+
 	export_input(user_params)
 	for key, value in user_params.items():
 		print(f"{key}: {value}")
+
+	if not user_params["return"]:
+		user_params["return_date"] = user_params["departure_date"]
+	if not 'max_price' in user_params or user_params["max_price"] == "0" :
+		user_params["max_price"] = 10000000
+	if not 'max_duration' in user_params or user_params["max_duration"] == "0":
+		user_params["max_duration"] = 10000000
+	if not 'ida_earliest' in user_params:
+		user_params["ida_earliest"] = "00:00"
+	if not 'ida_latest' in user_params:
+		user_params["ida_latest"] = "23:59"
+	if not 'vuelta_earliest' in user_params:
+		user_params["vuelta_earliest"] = "00:00"
+	if not 'vuelta_latest' in user_params:
+		user_params["vuelta_latest"] = "23:59"
+
+	watcher_params = {
+		"origin_station": user_params["origin_station"],
+		"destination_station": user_params["destination_station"],
+		"departure_date": user_params["departure_date"] + " 00:00",
+		"return_date": user_params["return_date"] + " 00:00",
+		"user_id": user_params["user_id"],
+	}
+
+	watcher_filter = {
+		"return": user_params["return"],
+		"max_price": int(user_params["max_price"]),
+		"max_duration": int(user_params["max_duration"]),
+		"ida_earliest": format_time_user(user_params["ida_earliest"]),
+		"ida_latest": format_time_user(user_params["ida_latest"]),
+		"vuelta_earliest": format_time_user(user_params["vuelta_earliest"]),
+		"vuelta_latest": format_time_user(user_params["vuelta_latest"]),
+	}
+
+	# hacer comprobaciones de la fecha cuando se introduce
+
+	watcher = Watcher(watcher_params["origin_station"], watcher_params["destination_station"], \
+			watcher_params["departure_date"], watcher_params["return_date"])
+	tickets_ida, tickets_vuelta = watcher.loop(watcher_filter)
+
+	if tickets_ida:
+		bot.send_message(message.chat.id, "🎫 ¡He encontrado billetes de ida!")
+		print(tickets_ida)
+
+	if tickets_vuelta and watcher_params["return"] == True:
+		bot.send_message(message.chat.id, "🎫 ¡He encontrado billetes de vuelta!")
+		print(tickets_vuelta)
 
 	# finish search
 	searching = False

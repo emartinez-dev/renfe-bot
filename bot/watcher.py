@@ -37,5 +37,8 @@ class Watcher:
 				break
 			time.sleep(60)
 			scraper.driver.refresh()
+			if scraper.driver.current_url == "https://www.renfe.com/es/es":
+				scraper.find_trains(self.origin_station, self.destination_station, \
+				    self.departure_date, self.return_date)
 		scraper.driver.quit()
 		return self.tickets_ida, self.tickets_vuelta

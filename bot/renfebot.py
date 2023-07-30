@@ -221,7 +221,7 @@ def search_trains(message: telebot.types.Message, user_params):
 		bot.send_message(message.chat.id, tickets_df_message(tickets_ida, \
 						       watcher_params, watcher_filter["return"]))
 
-	if tickets_vuelta is not None and watcher_params["return"] == True:
+	if tickets_vuelta is not None and watcher_filter["return"] == True:
 		bot.send_message(message.chat.id, tickets_df_message(tickets_vuelta, \
 						       watcher_params, watcher_filter["return"]))
 

@@ -2,11 +2,6 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 
-def str_to_dt(dt_str):
-    dt_format = "%d-%m-%Y %H:%M"
-    return datetime.strptime(dt_str, dt_format)
-
-
 def calculate_duration(start_time, end_time):
     start = datetime.strptime(start_time, '%H.%M').time()
     end = datetime.strptime(end_time, '%H.%M').time()

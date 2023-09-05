@@ -1,14 +1,18 @@
 class MaxRetriesExceeded(Exception):
-	pass
+    pass
+
 
 class ElementNotFound(Exception):
-	pass
+    pass
+
 
 class SearchFailed(Exception):
-	pass
+    pass
+
 
 class NoTrainsFound(Exception):
-	pass
+    pass
+
 
 class InvalidDate(Exception):
-	pass
+    pass

@@ -28,6 +28,6 @@ soupsieve==2.4.1
 trio==0.22.2
 trio-websocket==0.10.3
 typing-extensions==4.7.1
-urllib3==2.0.3
+urllib3==2.0.6
 wsproto==1.2.0
 zipp==3.15.0

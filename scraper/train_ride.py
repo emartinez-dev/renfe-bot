@@ -1,5 +1,6 @@
 import Levenshtein
 from datetime import datetime, timedelta
+from .utils import str_to_dt
 
 
 class TrainQuery:
@@ -50,12 +51,3 @@ def sanitize_station_input(_input):
     if closest_distance > 2:
         return None
     return closest_station
-
-
-def str_to_dt(dt_str):
-    dt_format = "%d-%m-%Y %H:%M"
-    try:
-        dt = datetime.strptime(dt_str, dt_format)
-    except ValueError:
-        dt = datetime.strptime(dt_str + " 00:00", dt_format)
-    return dt

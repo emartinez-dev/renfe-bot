@@ -21,3 +21,11 @@ def format_time(time):
 
 def format_time_user(time):
     return pd.to_datetime(time, format='%H:%M')
+
+def str_to_dt(dt_str):
+    dt_format = "%d-%m-%Y %H:%M"
+    try:
+        dt = datetime.strptime(dt_str, dt_format)
+    except ValueError:
+        dt = datetime.strptime(dt_str + " 00:00", dt_format)
+    return dt

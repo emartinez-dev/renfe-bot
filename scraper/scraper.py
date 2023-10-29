@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 from bs4 import BeautifulSoup
-from chromedriver_py import binary_path
 from selenium import webdriver
 from selenium.common.exceptions import (StaleElementReferenceException,
                                         WebDriverException)
@@ -15,11 +14,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-import scraper.exceptions as e
-from scraper.parser import clear_dataframe, parse_table
-from scraper.utils import str_to_dt
+from . import exceptions as e
+from .parser import clear_dataframe, parse_table
+from .utils import str_to_dt
+import chromedriver_autoinstaller_fix
 
-from scraper.train_ride import TrainQuery
+from .train_ride import TrainQuery
 
 """
 if not os.path.exists('logs'):
@@ -70,9 +70,9 @@ class RenfeScraper:
     """
 
     def __init__(self, query: TrainQuery):
-        service_object = Service(binary_path)
-        driver = webdriver.Chrome(service=service_object)
-        driver.implicitly_wait(10)
+        chromedriver_autoinstaller_fix.install()
+        driver = webdriver.Chrome()
+        driver.implicitly_wait(5)
         self.driver = driver
         self.df = None
         self.query = query
@@ -80,11 +80,12 @@ class RenfeScraper:
         self._wait_for_element(SEARCH_SELECTOR)
 
     def __del__(self):
-        self.driver.quit()
+        #self.driver.quit()
+        pass
 
     def find_trains(self):
-        self.search_stations(self.query.origin, self.query.destination)
-        self.search_dates(self.query.departure, self.query.arrival)
+        self.search_stations()
+        self.search_dates()
 
     def search_stations(self):
         self._fill_dropdown_input(self.query.origin, ORIGIN_SELECTOR)
@@ -122,7 +123,7 @@ class RenfeScraper:
         vuelta_data = parse_table(vuelta_trains, "vuelta")
         data = ida_data + vuelta_data
         if len(data) == 0:
-            logger.error("No trains found")
+            #logger.error("No trains found")
             raise e.SearchFailed("No trains found")
         self.df = pd.DataFrame(data)
         self.df = clear_dataframe(self.df)
@@ -143,7 +144,7 @@ class RenfeScraper:
             if latest_key in train_filter:
                 tickets = tickets[tickets['time_of_departure'] <= train_filter[latest_key]]
         if len(tickets) == 0:
-            logger.debug(f"No {direction} tickets found. Filter: {train_filter}")
+            #logger.debug(f"No {direction} tickets found. Filter: {train_filter}")
             return False, None
         return True, tickets
 
@@ -167,14 +168,14 @@ class RenfeScraper:
             except:
                 num_retries += 1
                 element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
-        logger.error(f"Max retries exceeded for selector {selector}")
+        #logger.error(f"Max retries exceeded for selector {selector}")
         raise e.MaxRetriesExceeded(f"Max retries exceeded for selector {selector}")
 
     def _wait_for_element(self, selector):
         wait = WebDriverWait(self.driver, 10)
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
         if self.driver.find_elements(By.CSS_SELECTOR, selector) == []:
-            logger.error(f"Element with selector {selector} not found")
+            #logger.error(f"Element with selector {selector} not found")
             raise e.ElementNotFound(f"Element with selector {selector} not found")
 
     def _fill_dropdown_input(self, input_text, css_selector):

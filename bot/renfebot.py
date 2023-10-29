@@ -5,7 +5,7 @@ from textwrap import dedent
 import telebot
 from credentials import get_token
 from watcher import Watcher
-from utils import sanitize_station_input, export_input, tickets_df_message
+from bot.utils import sanitize_station_input, export_input, tickets_df_message
 from scraper.utils import format_time_user
 
 TOKEN = get_token()

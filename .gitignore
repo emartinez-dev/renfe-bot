@@ -1,5 +1,6 @@
 env.py
 config.ini
+estacionesEstaticas.js
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

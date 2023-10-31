@@ -1,10 +1,8 @@
-import pandas as pd
-
-from .utils import calculate_duration, format_time
-
 def parse_table(table, direction):
     ida_data = []
 
+    if table is None:
+        return ida_data
     for row in table:
         train = {}
         try:
@@ -31,10 +29,3 @@ def parse_table(table, direction):
         ida_data.append(train)
 
     return ida_data
-
-def clear_dataframe(df):
-    df['duration'] = df.apply(lambda row: calculate_duration(row['time_of_departure'], row['time_of_arrival']), axis=1)
-    df['time_of_departure'] = format_time(df['time_of_departure'])
-    df['time_of_arrival'] = format_time(df['time_of_arrival'])
-    df['price'] = df['price'].str.replace(',', '.').str.replace(' €', '').astype(float)
-    return df

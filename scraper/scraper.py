@@ -91,9 +91,10 @@ class RenfeScraper:
         try:
             page.wait_for_selector(IDA_TABLE_SELECTOR, timeout=10000)
         except TimeoutError:
-            print("No trains found")
+            print("No trains found for the query")
+            print(self.renfe_data)
             return []
-        if not renfe_data.oneway:
+        if not self.renfe_data.oneway:
             buttons = page.locator(VUELTA_LINK_SELECTOR).all()
             for button in buttons:
                 if button.is_visible():

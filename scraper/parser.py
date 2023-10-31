@@ -6,13 +6,13 @@ def parse_table(table, direction):
     for row in table:
         train = {}
         try:
-            train['time_of_departure'] = row.find('div', class_='salida').text.strip()
+            train['departure'] = row.find('div', class_='salida').text.strip()
         except:
-            train['time_of_departure'] = "N/A"
+            train['departure'] = "N/A"
         try:
-            train['time_of_arrival'] = row.find('div', class_='llegada').text.strip()
+            train['arrival'] = row.find('div', class_='llegada').text.strip()
         except:
-            train['time_of_arrival'] = "N/A"
+            train['arrival'] = "N/A"
         try:
             train['train_type'] = row.find('div', id=f'dtipotren{row["cdgotren"]}').text.strip()
             if train['train_type'] == "":
@@ -21,9 +21,10 @@ def parse_table(table, direction):
             train['train_type'] = "N/A"
         try:
             train['price'] = row.find('div', class_='precio booking-list-element-big-font').text.strip()
+            train['price'] = float(train['price'].replace(" €", "").replace(",", "."))
             train['status'] = "available"
         except:
-            train['price'] = "0"
+            train['price'] = 0
             train['status'] = "full"
         train['direction'] = direction
         ida_data.append(train)

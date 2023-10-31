@@ -10,8 +10,8 @@ URL_STATIONS = "https://www.renfe.com/content/dam/renfe/es/General/buscadores"\
 
 
 class RenfeData:
-    def __init__(self, date_go: str, origin: str, destination: str,
-                 date_back: str = ""):
+    def __init__(self, origin: str, destination: str, departure_date: str,
+                 return_date: str = ""):
         """
         format for date: dd/mm/yyyy
         date for back can be an empty string
@@ -26,17 +26,17 @@ class RenfeData:
         """
 
         STATIONS_LIST = self.get_stations_list()
-        origin = self.find_station(STATIONS_LIST, origin)
-        destination = self.find_station(STATIONS_LIST, destination)
-        if origin is None or destination is None:
-            raise Exception("Origin or destination not found")
-        self.date_go = date_go
-        self.date_back = date_back
-        self.origin_code = origin[0]
-        self.destination_code = destination[0]
-        self.origin = origin[1]
-        self.destination = destination[1]
-        self.one_way = True if date_back == "" else False
+        self.origin = self.find_station(STATIONS_LIST, origin)
+        self.destination = self.find_station(STATIONS_LIST, destination)
+        if self.origin is None or self.destination is None:
+            raise Exception(f"Origin or destination not found. Input: {origin} - {destination}")
+        self.departure_date = departure_date
+        self.return_date = return_date
+        self.origin_code = self.origin[0]
+        self.destination_code = self.destination[0]
+        self.origin = self.origin[1]
+        self.destination = self.destination[1]
+        self.oneway = True if return_date == "" else False
         self.data = {
             "tipoBusqueda": "autocomplete",
             "currenLocation": "menuBusqueda",
@@ -44,12 +44,12 @@ class RenfeData:
             "cdgoOrigen": self.origin_code,
             "cdgoDestino": self.destination_code,
             "idiomaBusqueda": "ES",
-            "FechaIdaSel": self.date_go,
-            "FechaVueltaSel": self.date_back,
+            "FechaIdaSel": self.departure_date,
+            "FechaVueltaSel": self.return_date,
             "desOrigen": self.origin,
             "desDestino": self.destination,
-            "_fechaIdaVisual": self.date_go,
-            "_fechaVueltaVisual": self.date_back,
+            "_fechaIdaVisual": self.departure_date,
+            "_fechaVueltaVisual": self.return_date,
             "adultos_": "1",
             "ninos_": "0",
             "ninosMenores": "0",
@@ -60,6 +60,9 @@ class RenfeData:
             "Idioma": "es",
             "Pais": "ES"
         }
+
+    def __repr__(self):
+        return f"RenfeData({self.origin}, {self.destination}, {self.departure_date}, {self.return_date})"
 
     def get_post_data(self):
         return self.data

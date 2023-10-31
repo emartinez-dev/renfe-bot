@@ -10,8 +10,8 @@ URL_STATIONS = "https://www.renfe.com/content/dam/renfe/es/General/buscadores"\
 
 
 class RenfeData:
-    def __init__(self, date_go: str, date_back: str,
-                 origin: str, destination: str):
+    def __init__(self, date_go: str, origin: str, destination: str,
+                 date_back: str = ""):
         """
         format for date: dd/mm/yyyy
         date for back can be an empty string
@@ -36,6 +36,7 @@ class RenfeData:
         self.destination_code = destination[0]
         self.origin = origin[1]
         self.destination = destination[1]
+        self.one_way = True if date_back == "" else False
         self.data = {
             "tipoBusqueda": "autocomplete",
             "currenLocation": "menuBusqueda",

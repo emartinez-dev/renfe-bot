@@ -1,27 +1,12 @@
-import logging
-import os
-from datetime import datetime, timedelta
-
-import pandas as pd
+from .parser import parse_table
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.common.exceptions import (StaleElementReferenceException,
-                                        WebDriverException)
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
-from . import exceptions as e
-from .parser import clear_dataframe, parse_table
-from .utils import str_to_dt
-import chromedriver_autoinstaller_fix
-
-from .train_ride import TrainQuery
+from .renfe_data import RenfeData
 
 """
+import logging
+
 if not os.path.exists('logs'):
     os.makedirs('logs')
 
@@ -36,21 +21,13 @@ logger.addHandler(handler)
 """
 
 RENFE_HOME = "https://www.renfe.com/es/es"
+RENFE_SEARCH_URL = "https://venta.renfe.com/vol/search.do"
 
-# Selectors for https://www.renfe.com/es/es
-SEARCH_SELECTOR = "div.rf-search__root"
-ORIGIN_SELECTOR = "input#origin"
-DESTINATION_SELECTOR = "input#destination"
-DATE_OPEN_SELECTOR = "input#first-input"
-DELETE_BUTTON_SELECTOR = "button.lightpick__delete-action"
-APPLY_BUTTON_SELECTOR = "button.lightpick__apply-action-sub"
-SEARCH_BUTTON_SELECTOR = 'button[title="Buscar billete"]'
 
 # Selectors for https://venta.renfe.com/vol/search.do
 IDA_TABLE_SELECTOR = "#listaTrenesTBodyIda > tr"
 VUELTA_LINK_SELECTOR = 'a[title="Trenes Trayecto Vuelta"]'
 VUELTA_TABLE_SELECTOR = "#listaTrenesTBodyVuelta > tr"
-TRAIN_LIST_SELECTOR = "#listaTrenesTable"
 
 
 class RenfeScraper:
@@ -69,121 +46,72 @@ class RenfeScraper:
 
     """
 
-    def __init__(self, query: TrainQuery):
-        chromedriver_autoinstaller_fix.install()
-        driver = webdriver.Chrome()
-        driver.implicitly_wait(5)
-        self.driver = driver
-        self.df = None
-        self.query = query
-        driver.get(RENFE_HOME)
-        self._wait_for_element(SEARCH_SELECTOR)
+    def __init__(self):
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch()
+        self.context = self.browser.new_context()
+        self.page = self.context.new_page()
+        self.train_data = []
+        self.renfe_data = None
 
     def __del__(self):
-        #self.driver.quit()
-        pass
+        self.browser.close()
+        self.playwright.stop()
 
-    def find_trains(self):
-        self.search_stations()
-        self.search_dates()
+    def __repr__(self):
+        data = ""
+        for train in self.train_data:
+            data += "\nTrain:\n"
+            for k, v in train.items():
+                data += f"\t{k}: {v}\n"
+        return f"RenfeScraper({data})"
 
-    def search_stations(self):
-        self._fill_dropdown_input(self.query.origin, ORIGIN_SELECTOR)
-        self._fill_dropdown_input(self.query.destination, DESTINATION_SELECTOR)
-
-    def search_dates(self):
-        # the datepicker has timestamps in milliseconds as css selectors
-        departure_ts = int(self.query.departure.timestamp()) * 1000
-        arrival_ts = int(self.query.arrival.timestamp()) * 1000
-        departure_selector = f'div[data-time="{departure_ts}"]'
-        arrival_selector = f'div[data-time="{arrival_ts}"]'
-
-        self._find_and_click_with_retry(DATE_OPEN_SELECTOR)
-        self._find_and_click_with_retry(DELETE_BUTTON_SELECTOR)
-        self._find_and_click_with_retry(departure_selector)
-        self._find_and_click_with_retry(arrival_selector)
-        self._find_and_click_with_retry(APPLY_BUTTON_SELECTOR)
-        self._find_and_click_with_retry(SEARCH_BUTTON_SELECTOR)
-
-        self._wait_for_element(TRAIN_LIST_SELECTOR)
+    def find_trains(self, renfe_data: RenfeData):
+        print("Searching for trains...")
+        self.renfe_data = renfe_data
+        page = self.page
+        page.goto(RENFE_HOME)
+        # brute forcing the search through hidden inputs
+        page.get_by_title("Buscar billete").evaluate(
+            "button => button.removeAttribute('disabled')")
+        page.locator("#destination").click()
+        for k, v in renfe_data.get_post_data().items():
+            page.evaluate('''object => {
+                const element = document.querySelector(object.selector);
+                if (element) {
+                    element.value = object.value;
+                }
+            }''', {"selector": f'[name="{k}"]', "value": v})
+        page.click("text=Buscar billete")
+        page.wait_for_url("https://venta.renfe.com/vol/search.do**")
+        self.page = page
 
     def get_results(self):
-        driver = self.driver
+        if not self.page.url.startswith(RENFE_SEARCH_URL):
+            find_trains(self.data)
+        page = self.page
         # load both train tables
-        self._wait_for_element(IDA_TABLE_SELECTOR)
-        self._find_and_click_with_retry(VUELTA_LINK_SELECTOR)
-        self._wait_for_element(VUELTA_TABLE_SELECTOR)
-        # parse the tables
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        page.wait_for_selector(IDA_TABLE_SELECTOR)
+        buttons = page.locator(VUELTA_LINK_SELECTOR).all()
+        for button in buttons:
+            if button.is_visible():
+                button.click(force=True)
+                page.wait_for_selector(VUELTA_TABLE_SELECTOR)
+        # get the train tables
+        soup = BeautifulSoup(page.content(), 'html.parser')
         tbody_ida = soup.find("tbody", id="listaTrenesTBodyIda")
         tbody_vuelta = soup.find("tbody", id="listaTrenesTBodyVuelta")
         ida_trains = tbody_ida.find_all("tr", class_="trayectoRow")
         vuelta_trains = tbody_vuelta.find_all("tr", class_="trayectoRow")
         ida_data = parse_table(ida_trains, "ida")
         vuelta_data = parse_table(vuelta_trains, "vuelta")
-        data = ida_data + vuelta_data
-        if len(data) == 0:
-            #logger.error("No trains found")
-            raise e.SearchFailed("No trains found")
-        self.df = pd.DataFrame(data)
-        self.df = clear_dataframe(self.df)
+        self.train_data = ida_data + vuelta_data
 
-    def filter_results(self, direction, earliest_key, latest_key, train_filter):
-        df = self.df
-        tickets = df[df['direction'] == direction]
-        tickets = tickets[tickets['status'] == 'available']
-        if train_filter is not None:
-            if 'train_type' in train_filter:
-                tickets = tickets[tickets['train_type'] == train_filter['train_type']]
-            if 'max_price' in train_filter:
-                tickets = tickets[tickets['price'] <= train_filter['max_price']]
-            if 'max_duration' in train_filter:
-                tickets = tickets[tickets['duration'] <= train_filter['max_duration']]
-            if earliest_key in train_filter:
-                tickets = tickets[tickets['time_of_departure'] >= train_filter[earliest_key]]
-            if latest_key in train_filter:
-                tickets = tickets[tickets['time_of_departure'] <= train_filter[latest_key]]
-        if len(tickets) == 0:
-            #logger.debug(f"No {direction} tickets found. Filter: {train_filter}")
-            return False, None
-        return True, tickets
+    def wait_and_refresh(self, seconds):
+        print(f"Waiting {seconds} seconds...")
+        self.page.wait_for_timeout(seconds * 1000)
+        self.page.reload()
 
-    def check_origin_ticket(self, train_filter):
-        return self.filter_results('ida', 'ida_earliest', 'ida_latest', train_filter)
-
-    def check_destination_ticket(self, train_filter):
-        return self.filter_results('vuelta', 'vuelta_earliest', 'vuelta_latest', train_filter)
-
-    def _find_and_click_with_retry(self, selector, max_retires=3):
-        driver = self.driver
-        wait = WebDriverWait(driver, 10)
-        element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
-        actions = ActionChains(driver)
-        num_retries = 0
-        while num_retries < max_retires:
-            try:
-                actions.move_to_element(element).click()
-                actions.perform()
-                break
-            except:
-                num_retries += 1
-                element = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
-        #logger.error(f"Max retries exceeded for selector {selector}")
-        raise e.MaxRetriesExceeded(f"Max retries exceeded for selector {selector}")
-
-    def _wait_for_element(self, selector):
-        wait = WebDriverWait(self.driver, 10)
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-        if self.driver.find_elements(By.CSS_SELECTOR, selector) == []:
-            #logger.error(f"Element with selector {selector} not found")
-            raise e.ElementNotFound(f"Element with selector {selector} not found")
-
-    def _fill_dropdown_input(self, input_text, css_selector):
-        driver = self.driver
-        actions = ActionChains(driver)
-        origin_element = driver.find_element(By.CSS_SELECTOR, css_selector)
-        actions.move_to_element(origin_element).click()
-        actions.send_keys(input_text)
-        actions.send_keys(Keys.ARROW_DOWN)
-        actions.send_keys(Keys.RETURN)
-        actions.perform()
+    def stop(self):
+        self.browser.close()
+        self.playwright.stop()

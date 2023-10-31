@@ -1,0 +1,44 @@
+<!-- Ida y vuelta y solo ida es lo mismo, solo quitando _fechaVueltaVisual y FechaVueltaSel -->
+
+<form method="POST" action="https://venta.renfe.com/vol/buscarTren.do?Idioma=es&amp;Pais=ES" accept-charset="UTF-8">
+	<fieldset style="display: contents;">
+		<input type="hidden" name="tipoBusqueda" value="autocomplete">
+		<input type="hidden" name="currenLocation" value="menuBusqueda">
+		<input type="hidden" name="vengoderenfecom" value="SI">
+		<input type="hidden" name="cdgoOrigen">
+		<input type="hidden" name="cdgoDestino">
+		<input type="hidden" name="idiomaBusqueda" value="ES">
+		<input type="hidden" name="FechaIdaSel" value="29/10/2023">
+		<input type="hidden" name="FechaVueltaSel" value="30/10/2023">
+		<input type="hidden" name="desOrigen">
+		<input type="hidden" name="desDestino">
+		<input type="hidden" name="_fechaIdaVisual" value="29/10/2023">
+		<input type="hidden" name="_fechaVueltaVisual" value="30/10/2023">
+		<input type="hidden" name="adultos_" value="1">
+		<input type="hidden" name="ninos_" value="0">
+		<input type="hidden" name="ninosMenores" value="0">
+		<input type="hidden" name="numJoven">
+		<input type="hidden" name="numDorada">
+		<input type="hidden" name="codPromocional">
+		<input type="hidden" name="plazaH" value="false">
+		<input type="hidden" name="Idioma" value="es">
+		<input type="hidden" name="Pais" value="ES">
+	</fieldset>
+	<rf-button class-custom="rf-button--search" text-help="Buscar billete" class="sc-rf-button-h sc-rf-button-s hydrated">
+		<div class="rf-button--search sc-rf-button">
+			<div class="mdc-touch-target-wrapper sc-rf-button">
+				<button id="" type="submit" title="Buscar billete" class="mdc-button mdc-button--touch mdc-button--unelevated rf-button rf-button--special sc-rf-button mdc-ripple-upgraded" tabindex="-1" disabled="">
+					<div class="mdc-button__ripple sc-rf-button">
+					</div>
+						<span class="mdc-button__label sc-rf-button">
+						Buscar billete
+						</span>
+					<i class="rf-button__ico rf-ico icon-arrow_right sc-rf-button" aria-hidden="true">
+					</i>
+					<div class="mdc-button__touch sc-rf-button">
+					</div>
+				</button>
+			</div>
+		</div>
+	</rf-button>
+</form>

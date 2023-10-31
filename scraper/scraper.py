@@ -1,5 +1,6 @@
 from .parser import parse_table
 from playwright.sync_api import sync_playwright
+from playwright._impl._api_types import TimeoutError
 from bs4 import BeautifulSoup
 
 from .renfe_data import RenfeData
@@ -54,10 +55,6 @@ class RenfeScraper:
         self.train_data = []
         self.renfe_data = None
 
-    def __del__(self):
-        self.browser.close()
-        self.playwright.stop()
-
     def __repr__(self):
         data = ""
         for train in self.train_data:
@@ -91,14 +88,23 @@ class RenfeScraper:
             find_trains(self.data)
         page = self.page
         # load both train tables
-        page.wait_for_selector(IDA_TABLE_SELECTOR)
-        buttons = page.locator(VUELTA_LINK_SELECTOR).all()
-        for button in buttons:
-            if button.is_visible():
-                button.click(force=True)
-                page.wait_for_selector(VUELTA_TABLE_SELECTOR)
-        # get the train tables
-        soup = BeautifulSoup(page.content(), 'html.parser')
+        try:
+            page.wait_for_selector(IDA_TABLE_SELECTOR, timeout=10000)
+        except TimeoutError:
+            print("No trains found")
+            return []
+        if not renfe_data.oneway:
+            buttons = page.locator(VUELTA_LINK_SELECTOR).all()
+            for button in buttons:
+                if button.is_visible():
+                    button.click(force=True)
+                    page.wait_for_selector(VUELTA_TABLE_SELECTOR)
+            # get the train tables
+        self._get_train_data(page.content())
+        return self.train_data
+
+    def _get_train_data(self, page_content):
+        soup = BeautifulSoup(page_content, 'html.parser')
         tbody_ida = soup.find("tbody", id="listaTrenesTBodyIda")
         tbody_vuelta = soup.find("tbody", id="listaTrenesTBodyVuelta")
         ida_trains = tbody_ida.find_all("tr", class_="trayectoRow")

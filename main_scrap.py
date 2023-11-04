@@ -1,6 +1,9 @@
 from scraper.scraper import RenfeScraper, RenfeData
 from watcher.watcher import Watcher
 
+import telebot
+from bot.credentials import get_token
+
 # we have to create this from user
 """
 ride_data = RenfeData("31/10/2023", "CÓRDOBA", "VITORIA/GASTEIZ")
@@ -18,15 +21,26 @@ scraper.stop()
 """
 
 filter = {
-    "origin_departure_time": "07.20",
-    "origin_arrival_time": "16.00",
-    "return_departure_time": "00.00",
-    "return_arrival_time": "20.59",
-    "max_price": 100,
+    "origin_departure_time": "15.00",
+    "origin_arrival_time": "21.00",
+    "return_departure_time": "08.00",
+    "return_arrival_time": "13.59",
+    "max_price": 30,
 }
 
-query = RenfeData("SEVILLA-SANTA JUSTA", "MÁLAGA MARÍA ZAMBRANO", "01/11/2023")
-scrap = Watcher(query, filter)
-scrap.loop()
-trains = scrap.get_tickets()
-print(trains)
+TOKEN = get_token()
+bot = telebot.TeleBot(TOKEN)
+print("Ya estoy corriendo")
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message: telebot.types.Message):
+    bot.send_message(message.chat.id, "Allé voy!")
+
+    query = RenfeData("MÁLAGA MARÍA ZAMBRANO", "SEVILLA-SANTA JUSTA", "05/11/2023")
+    scrap = Watcher(query, filter)
+    scrap.loop()
+    trains = scrap.get_tickets()
+    bot.send_message(message.chat.id, "He encontrado algo o me he roto!")
+    print(trains)
+
+bot.polling()

@@ -85,7 +85,7 @@ class RenfeScraper:
 
     def get_results(self):
         if not self.page.url.startswith(RENFE_SEARCH_URL):
-            find_trains(self.data)
+            self.find_trains(self.renfe_data)
         page = self.page
         # load both train tables
         try:

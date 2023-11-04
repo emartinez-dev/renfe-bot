@@ -46,14 +46,16 @@ class Watcher:
             if not found_departure:
                 try:
                     self.departure_tickets = self.check_filters(trains, "ida")
-                    found_departure = True
+                    if len(self.departure_tickets) > 0:
+                        found_departure = True
                 except Exception as e:
                     print(e)
                     found_departure = True
             if not found_return:
                 try:
                     self.return_tickets = self.check_filters(trains, "vuelta")
-                    found_return = True
+                    if len(self.return_tickets) > 0:
+                        found_return = True
                 except Exception as e:
                     print(e)
                     found_return = True

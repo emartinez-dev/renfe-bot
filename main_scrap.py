@@ -32,15 +32,21 @@ TOKEN = get_token()
 bot = telebot.TeleBot(TOKEN)
 print("Ya estoy corriendo")
 
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):
-    bot.send_message(message.chat.id, "Allé voy!")
+    bot.send_message(message.chat.id, "Buscando trenes...")
 
     query = RenfeData("MÁLAGA MARÍA ZAMBRANO", "SEVILLA-SANTA JUSTA", "05/11/2023")
     scrap = Watcher(query, filter)
-    scrap.loop()
-    trains = scrap.get_tickets()
-    bot.send_message(message.chat.id, "He encontrado algo o me he roto!")
-    print(trains)
+    try:
+        scrap.loop()
+        trains = scrap.get_tickets()
+        bot.send_message(message.chat.id, "He encontrado algo!")
+        print(trains)
+    except Exception as e:
+        bot.send_message(message.chat.id, "Algo ha fallado, info:")
+        bot.send_message(message.chat.id, e.__str__())
+
 
 bot.polling()

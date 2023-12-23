@@ -30,9 +30,10 @@ Follow the below steps to install and set up the Renfe-bot:
 1. Clone this repository to your local machine.
 2. Install the required dependencies using the command mentioned in the
    'Requirements' section.
-3. Run the bot by executing it (`python bot/renfebot.py`) in the root
+3. Install playwright and its dependencies with the following commands: `playwright install; playwright install-deps`
+4. Run the bot by executing it (`python renfebot.py`) in the root
    directory of the project.
-4. Anything required like the API key will be prompted for when you run the bot
+5. Anything required like the API key will be prompted for when you run the bot
    for the first time.
 
 ## Usage
@@ -71,10 +72,3 @@ sublicense, and/or sell copies of the software, as long as you include the
 necessary attribution and provide a copy of the MIT license.
 
 You can see the full license text in the LICENSE file.
-
-## TODO
-
-- [ ] Change driver to use headless mode
-- [x] Implement Telegram bot
-- [x] Add installation instructions
-- [x] Add usage instructions

@@ -3,7 +3,6 @@ from calmjs.parse.unparsers.extractor import ast_to_dict
 
 import os
 import requests
-import string
 
 URL_STATIONS = "https://www.renfe.com/content/dam/renfe/es/General/buscadores"\
                "/javascript/estacionesEstaticas.js"

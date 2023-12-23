@@ -187,10 +187,10 @@ def search_trains(message: telebot.types.Message, user_params: dict):
                       user_params["departure_date"], user_params["return_date"])
 
     filter = {
-        "origin_departure_time": user_params.get("ida_earliest"),
-        "origin_arrival_time": user_params.get("ida_latest"),
-        "return_departure_time": user_params.get("vuelta_earliest"),
-        "return_arrival_time": user_params.get("vuelta_latest"),
+        "origin_departure_time": user_params.get("ida_earliest", ""),
+        "origin_arrival_time": user_params.get("ida_latest", ""),
+        "return_departure_time": user_params.get("vuelta_earliest", ""),
+        "return_arrival_time": user_params.get("vuelta_latest", ""),
         "max_price": float(user_params.get("max_price", 0)),
     }
     scrap = Watcher(query, filter)

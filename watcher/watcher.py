@@ -25,13 +25,13 @@ class Watcher:
         self.fill_filter()
 
     def fill_filter(self):
-        if "origin_departure_time" not in self.filter.keys():
+        if "origin_departure_time" not in self.filter.keys() or self.filter["origin_departure_time"] == "":
             self.filter["origin_departure_time"] = MINIMAL_FILTER["origin_departure_time"]
-        if "origin_arrival_time" not in self.filter.keys():
+        if "origin_arrival_time" not in self.filter.keys() or self.filter["origin_arrival_time"] == "":
             self.filter["origin_arrival_time"] = MINIMAL_FILTER["origin_arrival_time"]
-        if "return_departure_time" not in self.filter.keys():
+        if "return_departure_time" not in self.filter.keys() or self.filter["return_departure_time"] == "":
             self.filter["return_departure_time"] = MINIMAL_FILTER["return_departure_time"]
-        if "return_arrival_time" not in self.filter.keys():
+        if "return_arrival_time" not in self.filter.keys() or self.filter["return_arrival_time"] == "":
             self.filter["return_arrival_time"] = MINIMAL_FILTER["return_arrival_time"]
         if "max_price" not in self.filter.keys() or self.filter["max_price"] <= 0:
             self.filter["max_price"] = MINIMAL_FILTER["max_price"]

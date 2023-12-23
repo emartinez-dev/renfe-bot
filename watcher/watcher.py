@@ -33,7 +33,7 @@ class Watcher:
             self.filter["return_departure_time"] = MINIMAL_FILTER["return_departure_time"]
         if "return_arrival_time" not in self.filter.keys():
             self.filter["return_arrival_time"] = MINIMAL_FILTER["return_arrival_time"]
-        if "max_price" not in self.filter.keys():
+        if "max_price" not in self.filter.keys() or self.filter["max_price"] <= 0:
             self.filter["max_price"] = MINIMAL_FILTER["max_price"]
 
     def loop(self):

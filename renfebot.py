@@ -3,10 +3,10 @@ import json
 from textwrap import dedent
 
 import telebot
-from credentials import get_token
-from watcher import Watcher
-from bot.utils import sanitize_station_input, export_input, tickets_df_message
-from scraper.utils import format_time_user
+from bot.credentials import get_token
+from watcher.watcher import Watcher
+from bot.utils import export_input, get_tickets_message
+from scraper.scraper import RenfeData
 
 TOKEN = get_token()
 bot = telebot.TeleBot(TOKEN)
@@ -39,7 +39,7 @@ def send_retry(message: telebot.types.Message):
         bot.send_message(message.chat.id, "Ya hay una búsqueda en curso, por favor espera o utiliza /cancelar para cancelarla")
         return
     try:
-        with open('resources/last_input.json', 'r') as f:
+        with open('last_input.json', 'r') as f:
             user_params = json.load(f)
             f.close()
         search_trains(message, user_params)
@@ -84,7 +84,7 @@ def start(message: telebot.types.Message):
 
 
 def get_origin_station(message: telebot.types.Message, user_params):
-    station = sanitize_station_input(message.text)
+    station = message.text
     if station is None:
         bot.send_message(message.chat.id, dedent("No he entendido a qué estación te refieres,\
            por favor introdúcela como aparece en la web de Renfe"))
@@ -95,13 +95,13 @@ def get_origin_station(message: telebot.types.Message, user_params):
 
 
 def get_destination_station(message: telebot.types.Message, user_params):
-    station = sanitize_station_input(message.text)
+    station = message.text
     if station is None:
         bot.send_message(message.chat.id, dedent("No he entendido a qué estación te refieres,\
            por favor introdúcela como aparece en la web de Renfe"))
         bot.register_next_step_handler(message, get_destination_station, user_params)
     user_params["destination_station"] = station
-    bot.send_message(message.chat.id, "📅 ¿Cuándo sales? (dd-mm-aaaa)")
+    bot.send_message(message.chat.id, "📅 ¿Cuándo sales? (dd/mm/aaaa)")
     bot.register_next_step_handler(message, get_departure_date, user_params)
 
 
@@ -113,18 +113,17 @@ def get_departure_date(message: telebot.types.Message, user_params):
 
 def get_return(message: telebot.types.Message, user_params):
     if message.text == "S" or message.text == "s":
-        user_params["return"] = True
-        bot.send_message(message.chat.id, "📅 ¿Cuándo vuelves? (dd-mm-aaaa)")
+        bot.send_message(message.chat.id, "📅 ¿Cuándo vuelves? (dd/mm/aaaa)")
         bot.register_next_step_handler(message, get_return_date, user_params)
     else:
-        user_params["return"] = False
-        bot.send_message(message.chat.id, "¿Quieres filtrar los resultados? (S/N)")
+        user_params["return_date"] = ""
+        bot.send_message(message.chat.id, "¿Quieres filtrar los resultados (hora, precio...)? (S/N)")
         bot.register_next_step_handler(message, get_filter, user_params)
 
 
 def get_return_date(message: telebot.types.Message, user_params):
     user_params["return_date"] = message.text
-    bot.send_message(message.chat.id, "¿Quieres filtrar los resultados? (S/N)")
+    bot.send_message(message.chat.id, "¿Quieres filtrar los resultados (hora, precio...)? (S/N)")
     bot.register_next_step_handler(message, get_filter, user_params)
 
 
@@ -150,13 +149,13 @@ def get_max_duration(message: telebot.types.Message, user_params):
 
 def get_ida_earliest(message: telebot.types.Message, user_params):
     user_params["ida_earliest"] = message.text
-    bot.send_message(message.chat.id, "🕒 ¿Y cómo muy tarde? (hh:mm)")
+    bot.send_message(message.chat.id, "🕒 ¿Y llegar a tu destino? (hh:mm)")
     bot.register_next_step_handler(message, get_ida_latest, user_params)
 
 
 def get_ida_latest(message: telebot.types.Message, user_params):
     user_params["ida_latest"] = message.text
-    if user_params["return"]:
+    if user_params["return_date"] != "":
         bot.send_message(message.chat.id, "🕒 ¿A partir de qué hora quieres volver? (hh:mm)")
         bot.register_next_step_handler(message, get_vuelta_earliest, user_params)
     else:
@@ -165,7 +164,7 @@ def get_ida_latest(message: telebot.types.Message, user_params):
 
 def get_vuelta_earliest(message: telebot.types.Message, user_params):
     user_params["vuelta_earliest"] = message.text
-    bot.send_message(message.chat.id, "🕒 ¿Y cómo muy tarde? (hh:mm)")
+    bot.send_message(message.chat.id, "🕒 ¿Y llegar a tu destino? (hh:mm)")
     bot.register_next_step_handler(message, get_vuelta_latest, user_params)
 
 
@@ -174,77 +173,55 @@ def get_vuelta_latest(message: telebot.types.Message, user_params):
     search_trains(message, user_params)
 
 
-def search_trains(message: telebot.types.Message, user_params):
-    global searching
-    searching = True
-
+def search_trains(message: telebot.types.Message, user_params: dict):
     bot.send_message(message.chat.id, "🔎 Buscando billetes...")
     bot.send_message(message.chat.id, "⚠️ (hasta que la aplicación esté terminada, "
-                     "esta búsqueda no te dejará volver a interactuar con el bot hasta que "
-                     "encuentre billetes o falle)")
+        "esta búsqueda no te dejará volver a interactuar con el bot hasta que "
+        "encuentre billetes o falle)")
 
+    user_params["origin_station"] = user_params["origin_station"].upper()
+    user_params["destination_station"] = user_params["destination_station"].upper()
     export_input(user_params)
-    for key, value in user_params.items():
-        print(f"{key}: {value}")
 
-    if not user_params["return"]:
-        user_params["return_date"] = user_params["departure_date"]
-    if 'max_price' not in user_params or user_params["max_price"] == "0":
-        user_params["max_price"] = 10000000
-    if 'max_duration' not in user_params or user_params["max_duration"] == "0":
-        user_params["max_duration"] = 10000000
-    if 'ida_earliest' not in user_params:
-        user_params["ida_earliest"] = "00:00"
-    if 'ida_latest' not in user_params:
-        user_params["ida_latest"] = "23:59"
-    if 'vuelta_earliest' not in user_params:
-        user_params["vuelta_earliest"] = "00:00"
-    if 'vuelta_latest' not in user_params:
-        user_params["vuelta_latest"] = "23:59"
+    query = RenfeData(user_params["origin_station"], user_params["destination_station"],
+                      user_params["departure_date"], user_params["return_date"])
 
-    watcher_params = {
-        "origin_station": user_params["origin_station"],
-        "destination_station": user_params["destination_station"],
-        "departure_date": user_params["departure_date"] + " 00:00",
-        "return_date": user_params["return_date"] + " 00:00",
-        "user_id": user_params["user_id"],
+    filter = {
+        "origin_departure_time": user_params.get("ida_earliest"),
+        "origin_arrival_time": user_params.get("ida_latest"),
+        "return_departure_time": user_params.get("vuelta_earliest"),
+        "return_arrival_time": user_params.get("vuelta_latest"),
+        "max_price": float(user_params.get("max_price", 0)),
     }
+    scrap = Watcher(query, filter)
 
-    watcher_filter = {
-        "return": user_params["return"],
-        "max_price": int(user_params["max_price"]),
-        "max_duration": int(user_params["max_duration"]),
-        "ida_earliest": format_time_user(user_params["ida_earliest"]),
-        "ida_latest": format_time_user(user_params["ida_latest"]),
-        "vuelta_earliest": format_time_user(user_params["vuelta_earliest"]),
-        "vuelta_latest": format_time_user(user_params["vuelta_latest"]),
-    }
+    """
+    user_params
 
-    # hacer comprobaciones de la fecha cuando se introduce
-
-    tickets_ida = None
-    tickets_vuelta = None
-
+    origin_station: Córdoba
+    destination_station: Posadas
+    departure_date: 24/12/2023
+    return_date: 25/12/2023
+    max_price: 0
+    max_duration: 0
+    ida_earliest: 12:00
+    ida_latest: 23:00
+    vuelta_earliest: 12:00
+    vuelta_latest: 23:00
+    """
+        
+    """
+    ([{'departure': '14.00', 'arrival': '14.18', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '14.00', 'arrival': '14.18', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '14.49', 'arrival': '15.20', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '16.12', 'arrival': '16.30', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '16.12', 'arrival': '16.30', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '18.39', 'arrival': '18.58', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '18.39', 'arrival': '18.58', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '19.18', 'arrival': '19.45', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '20.10', 'arrival': '20.28', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '20.10', 'arrival': '20.28', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}], [{'departure': '14.31', 'arrival': '14.49', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '14.31', 'arrival': '14.50', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '16.03', 'arrival': '16.24', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '16.03', 'arrival': '16.24', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '17.21', 'arrival': '17.48', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '18.40', 'arrival': '19.05', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '18.40', 'arrival': '19.05', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '20.24', 'arrival': '20.56', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '20.43', 'arrival': '21.02', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '20.43', 'arrival': '21.02', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '21.29', 'arrival': '21.48', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '21.29', 'arrival': '21.48', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}])
+    """
     try:
-        watcher = Watcher(watcher_params["origin_station"], watcher_params["destination_station"],
-                          watcher_params["departure_date"], watcher_params["return_date"])
-        tickets_ida, tickets_vuelta = watcher.loop(watcher_filter)
-    except:
-        bot.send_message(message.chat.id, "⚠️ Ha ocurrido un error al buscar los billetes, por favor inténtalo de nuevo")
-        searching = False
-        watcher.driver.quit()
-        return
-
-    if tickets_ida is not None:
-        bot.send_message(message.chat.id, tickets_df_message(tickets_ida,
-                         watcher_params, watcher_filter["return"]))
-
-    if tickets_vuelta is not None and watcher_filter["return"]:
-        bot.send_message(message.chat.id, tickets_df_message(tickets_vuelta,
-                         watcher_params, watcher_filter["return"]))
-
-    # finish search
-    searching = False
+        scrap.loop()
+        trains = scrap.get_tickets()
+        tickets_message = get_tickets_message(trains)
+        bot.send_message(message.chat.id, tickets_message)
+        print(trains)
+    except Exception as e:
+        bot.send_message(message.chat.id, "Algo ha fallado, info:")
+        bot.send_message(message.chat.id, e.__str__())
 
 
 bot.polling()

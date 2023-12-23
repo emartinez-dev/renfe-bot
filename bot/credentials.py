@@ -23,6 +23,13 @@ def bot_config():
         Después de introducir el nombre y su nombre de usuario, el asistente te dará
         tanto el token de acceso a la API como el nombre de usuario del bot. Guarda la URL
         para poder interactuar con él e introduce el token a continuación.
+
+        Puede que al correr el script en Docker, no te deje introducir el token, puedes saltarte
+        este paso y escribirlo directamente en el archivo config.ini con este formato:
+        ---
+            [Telegram]
+            secret_token=123456789:ABCdefGhIjKlmNopQrsTuvWxYz
+        ---
         """))
         config['Telegram'] = {}
 

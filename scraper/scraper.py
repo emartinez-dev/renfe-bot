@@ -1,6 +1,5 @@
 from .parser import parse_table
-from playwright.sync_api import sync_playwright
-from playwright._impl._api_types import TimeoutError
+from playwright.sync_api import sync_playwright, TimeoutError
 from bs4 import BeautifulSoup
 
 from .renfe_data import RenfeData

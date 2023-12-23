@@ -10,4 +10,4 @@ RUN playwright install-deps
 
 EXPOSE 80
 
-CMD ["python", "main_scrap.py"]
+CMD ["python", "-u", "main_scrap.py"]

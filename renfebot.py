@@ -195,33 +195,17 @@ def search_trains(message: telebot.types.Message, user_params: dict):
     }
     scrap = Watcher(query, filter)
 
-    """
-    user_params
-
-    origin_station: Córdoba
-    destination_station: Posadas
-    departure_date: 24/12/2023
-    return_date: 25/12/2023
-    max_price: 0
-    max_duration: 0
-    ida_earliest: 12:00
-    ida_latest: 23:00
-    vuelta_earliest: 12:00
-    vuelta_latest: 23:00
-    """
-        
-    """
-    ([{'departure': '14.00', 'arrival': '14.18', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '14.00', 'arrival': '14.18', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '14.49', 'arrival': '15.20', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '16.12', 'arrival': '16.30', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '16.12', 'arrival': '16.30', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '18.39', 'arrival': '18.58', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '18.39', 'arrival': '18.58', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '19.18', 'arrival': '19.45', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}, {'departure': '20.10', 'arrival': '20.28', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'ida'}, {'departure': '20.10', 'arrival': '20.28', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'ida'}], [{'departure': '14.31', 'arrival': '14.49', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '14.31', 'arrival': '14.50', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '16.03', 'arrival': '16.24', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '16.03', 'arrival': '16.24', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '17.21', 'arrival': '17.48', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '18.40', 'arrival': '19.05', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '18.40', 'arrival': '19.05', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '20.24', 'arrival': '20.56', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '20.43', 'arrival': '21.02', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '20.43', 'arrival': '21.02', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}, {'departure': '21.29', 'arrival': '21.48', 'train_type': 'MD', 'price': 3.05, 'status': 'available', 'direction': 'vuelta'}, {'departure': '21.29', 'arrival': '21.48', 'train_type': 'PROXIMDAD', 'price': 2.3, 'status': 'available', 'direction': 'vuelta'}])
-    """
     try:
         scrap.loop()
         trains = scrap.get_tickets()
-        tickets_message = get_tickets_message(trains)
+        tickets_message = get_tickets_message(trains, user_params["origin_station"],
+                                              user_params["destination_station"])
         bot.send_message(message.chat.id, tickets_message)
-        print(trains)
+        print("Búsqueda completada")
     except Exception as e:
         bot.send_message(message.chat.id, "Algo ha fallado, info:")
         bot.send_message(message.chat.id, e.__str__())
+        print("La búsqueda ha fallado")
 
 
 bot.polling()

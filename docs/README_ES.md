@@ -16,7 +16,11 @@ El manejo de errores no es perfecto, por lo que si encuentras algún problema,
 reintando el comando o utilizando /reintentar debería funcionar. Si el problema
 persiste, por favor abre un ticket en GitHub.
 
-## Requisitos
+## Como utilizar el bot
+
+### Opción A: Correrlo normalmente en tu ordenador
+
+#### Requisitos
 
 Las dependencias requeridas para ejecutar este proyecto están incluidas en el
 archivo `requirements.txt`. Para instalar los requisitos, usa el siguiente
@@ -26,18 +30,50 @@ comando:
 pip install -r requirements.txt
 ```
 
-## Instalación
+#### Instalación
 
 Sigue los siguientes pasos para instalar y configurar el Renfe-bot:
 
 1. Clona este repositorio en tu máquina local.
 2. Instala las dependencias requeridas utilizando el comando mencionado en la
    sección 'Requisitos'.
-3. Instalar playwright y sus dependencias con los siguientes comandos: `playwright install; playwright install-deps`
-4. Ejecuta el bot ejecutándolo (`python bot/renfebot.py`) en el directorio raíz
+3. Instalar playwright y sus dependencias con los siguientes comandos: `playwright install && playwright install-deps`
+4. Ejecuta el bot ejecutándolo (`python bot/renfe-bot.py`) en el directorio raíz
    del proyecto.
 5. Cualquier dato requerido, como la clave API, se solicitará cuando ejecutes el
    bot por primera vez.
+
+### Opción B: Correrlo en un container de Docker
+
+#### Requisitos
+
+Para correrlo en Docker, solo necesitas tenerlo instalado, todo lo demás viene
+en el Dockerfile.
+
+> [!IMPORTANT]
+> Es posible que tengas que añadir `sudo` antes de cada comando de
+> Docker, también puedes añadir tu usuario al grupo `docker`, revisa [este documento]
+> (https://docs.docker.com/engine/install/linux-postinstall/).
+
+#### Instalación
+
+Primero hay que construir la imagen, lo hacemos con el siguiente comando:
+
+```bash
+docker build -t renfe-bot .
+```
+
+Cuando la imagen termine de construirse, podemos correrla con el siguiente comando:
+
+```bash
+docker run -it -v $(pwd):/app renfe-bot
+```
+
+O si estás utilizando Windows:
+
+```bat
+docker run -it -v %cd%:/app renfe-bot
+```
 
 ## Uso
 

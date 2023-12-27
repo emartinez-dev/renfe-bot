@@ -1,13 +1,10 @@
-FROM python:3.12
+FROM mcr.microsoft.com/playwright:v1.40.0-jammy
 
 WORKDIR /app
+COPY requirements.txt /app/requirements.txt
 
-COPY . /app
+#RUN apt-get update && apt-get upgrade -y && apt-get install -y python-pip python
+RUN apt-get update && apt-get install -y python3-pip
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install
-RUN playwright install-deps
-
-EXPOSE 80
-
-CMD ["python", "-u", "main_scrap.py"]
+CMD ["python3", "-u", "renfe-bot.py"]

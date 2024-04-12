@@ -6,7 +6,7 @@ calmjs.types==1.0.1
 certifi==2023.11.17
 charset-normalizer==3.3.2
 greenlet==3.0.1
-idna==3.6
+idna==3.7
 playwright==1.40.0
 ply==3.11
 pyee==11.0.1

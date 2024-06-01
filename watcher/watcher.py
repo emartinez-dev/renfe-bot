@@ -17,7 +17,7 @@ class Watcher:
     def __init__(self, renfe_data: RenfeData, filter: dict = MINIMAL_FILTER):
         self.query = renfe_data
         self.scraper = RenfeScraper()
-        self.scraper.find_trains(self.query)
+        self.scraper.init_search(self.query)
         self.oneway = False if renfe_data.return_date != "" else True
         self.departure_tickets = []
         self.return_tickets = []

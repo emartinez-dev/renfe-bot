@@ -90,6 +90,6 @@ class RenfeData:
 
     def find_station(self, stations: list, station_name: str):
         for station in stations:
-            if station["desgEstacion"] == station_name:
-                return (station["clave"], station["desgEstacion"])
+            if station["desgEstacionPlano"] == station_name:
+                return (station["clave"], station["desgEstacionPlano"])
         return None

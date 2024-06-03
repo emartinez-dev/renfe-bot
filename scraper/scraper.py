@@ -93,10 +93,8 @@ class RenfeScraper:
             print(self.renfe_data)
             return []
         if not self.renfe_data.oneway:
-            button = page.click(VUELTA_LINK_SELECTOR)
-            if button.is_visible():
-                button.click(force=True)
-                page.wait_for_selector(VUELTA_TABLE_SELECTOR)
+           page.click(VUELTA_LINK_SELECTOR)
+           page.wait_for_selector(VUELTA_TABLE_SELECTOR)
         self._get_train_data(page.content())
         return self.train_data
 

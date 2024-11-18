@@ -26,3 +26,17 @@ def get_tickets_message(trains: tuple, origin, destination):
                 message += f"🚆 Tren {train['train_type']} - 🕒 {train['departure']} - {train['arrival']} 🕙 - {train['price']} €\n"
             message += "\n"
     return message
+
+
+def load_last_search_results():
+    try:
+        with open('last_search_results.json', 'r') as f:
+            last_results = json.load(f)
+            f.close()
+        return last_results
+    except FileNotFoundError:
+        return None
+
+
+def compare_search_results(last_results, current_results):
+    return last_results == current_results

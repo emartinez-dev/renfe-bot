@@ -291,8 +291,6 @@ def check_for_changes():
 
         last_results = load_last_search_results()
         if compare_search_results(last_results, current_results):
-            if not current_results[0] and not current_results[1]:
-                return
             bot.send_message(user_params["user_id"], "No hay cambios en los resultados de la búsqueda")
         else:
             bot.send_message(user_params["user_id"], "Hay cambios en los resultados de la búsqueda")

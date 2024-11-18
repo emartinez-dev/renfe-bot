@@ -230,11 +230,10 @@ def get_alert_frequency(message: telebot.types.Message):
         bot.send_message(message.chat.id, "Por favor, introduce 1, 2 o 3")
         bot.register_next_step_handler(message, get_alert_frequency)
     else:
-        schedule_alerts(frequency)
-        bot.send_message(message.chat.id, f"Alertas configuradas para {frequency} veces al día")
+        schedule_alerts(frequency, message)
 
 
-def schedule_alerts(frequency):
+def schedule_alerts(frequency, message: telebot.types.Message):
     if frequency == 1:
         schedule.every().day.at("09:00").do(check_for_changes)
     elif frequency == 2:
@@ -248,9 +247,16 @@ def schedule_alerts(frequency):
     global alerting
     alerting = True
 
+    # Print the scheduled tasks
+    print("Tareas programadas:")
+    for job in schedule.jobs:
+        print(f"Task scheduled at {job.at_time} to execute {job.job_func.__name__}")
+
+    bot.send_message(message.chat.id, f"Alertas configuradas para {frequency} veces al día")
+
     while alerting:
         schedule.run_pending()
-        time.sleep(1)
+        time.sleep(60)
 
 
 @bot.message_handler(commands=['shutdown_alert'])
@@ -261,6 +267,7 @@ def shutdown_alert(message: telebot.types.Message):
 
 
 def check_for_changes():
+    print("It's time to check for changes...")
     try:
         with open('last_input.json', 'r') as f:
             user_params = json.load(f)

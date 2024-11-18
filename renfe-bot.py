@@ -224,6 +224,9 @@ def search_trains(message: telebot.types.Message, user_params: dict, is_schedule
 
 @bot.message_handler(commands=['alert'])
 def set_alert(message: telebot.types.Message):
+    if not os.path.exists('last_input.json') or not os.path.exists('last_search_results.json'):
+        bot.send_message(message.chat.id, "Debes realizar una búsqueda antes de configurar alertas, porque las alertas replicarán tu última búsqueda.")
+        return
     bot.send_message(message.chat.id, "¿Cuántas veces al día quieres que te avise? (1, 2 o 3)")
     bot.register_next_step_handler(message, get_alert_frequency)
 
@@ -266,6 +269,9 @@ def schedule_alerts(frequency, message: telebot.types.Message):
 @bot.message_handler(commands=['shutdown_alert'])
 def shutdown_alert(message: telebot.types.Message):
     global alerting
+    if not alerting:
+        bot.send_message(message.chat.id, "No había alertas configuradas")
+        return
     alerting = False
     bot.send_message(message.chat.id, "Alertas apagadas")
 

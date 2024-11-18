@@ -39,4 +39,11 @@ def load_last_search_results():
 
 
 def compare_search_results(last_results, current_results):
-    return last_results == current_results
+    if last_results is None or current_results is None:
+        return False
+    if len(last_results) != len(current_results):
+        return False
+    for last, current in zip(last_results, current_results):
+        if last != current:
+            return False
+    return True

@@ -178,7 +178,7 @@ def get_vuelta_latest(message: telebot.types.Message, user_params):
     search_trains(message, user_params)
 
 
-def search_trains(message: telebot.types.Message, user_params: dict):
+def search_trains(message: telebot.types.Message, user_params: dict, is_scheduled_task=False):
     bot.send_message(message.chat.id, "🔎 Buscando billetes...")
     bot.send_message(message.chat.id, "⚠️ (hasta que la aplicación esté terminada, "
         "esta búsqueda no te dejará volver a interactuar con el bot hasta que "
@@ -203,6 +203,10 @@ def search_trains(message: telebot.types.Message, user_params: dict):
     try:
         scrap.loop()
         trains = scrap.get_tickets()
+        if not trains[0] and not trains[1]:
+            if not is_scheduled_task:
+                bot.send_message(message.chat.id, "No se han encontrado trenes.")
+            return
         tickets_message = get_tickets_message(trains, user_params["origin_station"],
                                               user_params["destination_station"])
         bot.send_message(message.chat.id, tickets_message)
@@ -287,6 +291,8 @@ def check_for_changes():
 
         last_results = load_last_search_results()
         if compare_search_results(last_results, current_results):
+            if not current_results[0] and not current_results[1]:
+                return
             bot.send_message(user_params["user_id"], "No hay cambios en los resultados de la búsqueda")
         else:
             bot.send_message(user_params["user_id"], "Hay cambios en los resultados de la búsqueda")

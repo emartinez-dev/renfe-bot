@@ -1,16 +1,19 @@
 import os
 import json
+import schedule
+import time
 from textwrap import dedent
 
 import telebot
 from bot.credentials import get_token
 from watcher.watcher import Watcher
-from bot.utils import export_input, get_tickets_message
+from bot.utils import export_input, get_tickets_message, load_last_search_results, compare_search_results
 from scraper.scraper import RenfeData
 
 TOKEN = get_token()
 bot = telebot.TeleBot(TOKEN)
 searching = False
+alerting = False
 print("Ya estoy corriendo! Corre a Telegram e interactúa conmigo")
 
 
@@ -30,6 +33,8 @@ def send_help(message: telebot.types.Message):
         /buscar - Busca billetes de tren
         /reintentar - Vuelve a buscar billetes con los parámetros de la última búsqueda
         /debug - Muestra información de depuración del último log
+        /alert - Configura alertas para las búsquedas
+        /shutdown_alert - Apaga las alertas configuradas
         """))
 
 
@@ -173,7 +178,7 @@ def get_vuelta_latest(message: telebot.types.Message, user_params):
     search_trains(message, user_params)
 
 
-def search_trains(message: telebot.types.Message, user_params: dict):
+def search_trains(message: telebot.types.Message, user_params: dict, is_scheduled_task=False):
     bot.send_message(message.chat.id, "🔎 Buscando billetes...")
     bot.send_message(message.chat.id, "⚠️ (hasta que la aplicación esté terminada, "
         "esta búsqueda no te dejará volver a interactuar con el bot hasta que "
@@ -198,6 +203,10 @@ def search_trains(message: telebot.types.Message, user_params: dict):
     try:
         scrap.loop()
         trains = scrap.get_tickets()
+        if not trains[0] and not trains[1]:
+            if not is_scheduled_task:
+                bot.send_message(message.chat.id, "No se han encontrado trenes.")
+            return
         tickets_message = get_tickets_message(trains, user_params["origin_station"],
                                               user_params["destination_station"])
         bot.send_message(message.chat.id, tickets_message)
@@ -206,6 +215,102 @@ def search_trains(message: telebot.types.Message, user_params: dict):
         bot.send_message(message.chat.id, "Algo ha fallado, info:")
         bot.send_message(message.chat.id, e.__str__())
         print("La búsqueda ha fallado")
+
+    # Save the search results to a file
+    with open('last_search_results.json', 'w+') as f:
+        json.dump(trains, f, indent=4)
+        f.close()
+
+
+@bot.message_handler(commands=['alert'])
+def set_alert(message: telebot.types.Message):
+    if not os.path.exists('last_input.json') or not os.path.exists('last_search_results.json'):
+        bot.send_message(message.chat.id, "Debes realizar una búsqueda antes de configurar alertas, porque las alertas replicarán tu última búsqueda.")
+        return
+    bot.send_message(message.chat.id, "¿Cuántas veces al día quieres que te avise? (1, 2 o 3)")
+    bot.register_next_step_handler(message, get_alert_frequency)
+
+
+def get_alert_frequency(message: telebot.types.Message):
+    frequency = int(message.text)
+    if frequency not in [1, 2, 3]:
+        bot.send_message(message.chat.id, "Por favor, introduce 1, 2 o 3")
+        bot.register_next_step_handler(message, get_alert_frequency)
+    else:
+        schedule_alerts(frequency, message)
+
+
+def schedule_alerts(frequency, message: telebot.types.Message):
+    if frequency == 1:
+        schedule.every().day.at("09:00").do(check_for_changes)
+    elif frequency == 2:
+        schedule.every().day.at("09:00").do(check_for_changes)
+        schedule.every().day.at("20:00").do(check_for_changes)
+    elif frequency == 3:
+        schedule.every().day.at("09:00").do(check_for_changes)
+        schedule.every().day.at("13:00").do(check_for_changes)
+        schedule.every().day.at("20:00").do(check_for_changes)
+
+    global alerting
+    alerting = True
+
+    # Print the scheduled tasks
+    print("Tareas programadas:")
+    for job in schedule.jobs:
+        print(f"Task scheduled at {job.at_time} to execute {job.job_func.__name__}")
+
+    bot.send_message(message.chat.id, f"Alertas configuradas para {frequency} veces al día")
+
+    while alerting:
+        schedule.run_pending()
+        time.sleep(60)
+
+
+@bot.message_handler(commands=['shutdown_alert'])
+def shutdown_alert(message: telebot.types.Message):
+    global alerting
+    if not alerting:
+        bot.send_message(message.chat.id, "No había alertas configuradas")
+        return
+    alerting = False
+    bot.send_message(message.chat.id, "Alertas apagadas")
+
+
+def check_for_changes():
+    print("It's time to check for changes...")
+    try:
+        with open('last_input.json', 'r') as f:
+            user_params = json.load(f)
+            f.close()
+        query = RenfeData(user_params["origin_station"], user_params["destination_station"],
+                          user_params["departure_date"], user_params["return_date"])
+        filter = {
+            "origin_departure_time": user_params.get("ida_earliest", ""),
+            "origin_arrival_time": user_params.get("ida_latest", ""),
+            "return_departure_time": user_params.get("vuelta_earliest", ""),
+            "return_arrival_time": user_params.get("vuelta_latest", ""),
+            "max_price": float(user_params.get("max_price", 0)),
+        }
+        scrap = Watcher(query, filter)
+        scrap.loop()
+        current_results = scrap.get_tickets()
+
+        last_results = load_last_search_results()
+        if compare_search_results(last_results, current_results):
+            bot.send_message(user_params["user_id"], "No hay cambios en los resultados de la búsqueda")
+        else:
+            bot.send_message(user_params["user_id"], "Hay cambios en los resultados de la búsqueda")
+            tickets_message = get_tickets_message(current_results, user_params["origin_station"],
+                                                  user_params["destination_station"])
+            bot.send_message(user_params["user_id"], tickets_message)
+
+        with open('last_search_results.json', 'w+') as f:
+            json.dump(current_results, f, indent=4)
+            f.close()
+    except Exception as e:
+        bot.send_message(user_params["user_id"], "Algo ha fallado al comprobar los cambios, info:")
+        bot.send_message(user_params["user_id"], e.__str__())
+        print("La comprobación de cambios ha fallado")
 
 
 bot.polling()

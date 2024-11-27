@@ -1,16 +1,18 @@
 from datetime import datetime
 import random
+import re
 import requests
 import string
 from typing import Any, Dict, Optional
 
+from errors import InvalidDWRToken
 from models import StationRecord
 from storage import StationsStorage
 
 SEARCH_URL = "https://venta.renfe.com/vol/buscarTren.do?Idioma=es&Pais=ES"
 
 
-def create_payload(
+def create_search_payload(
     origin: StationRecord,
     destination: StationRecord,
     departure_date: datetime,
@@ -58,6 +60,53 @@ def create_payload(
     return payload
 
 
+def create_generate_id_payload(batch_id: int, search_id: Optional[str] = None) -> str:
+    """Generates the payload for the API calls to the generateId DWR endpoint
+
+    :param batch_id: batchId of the operation
+    :type batch_id: int
+    :param search_id: defaults to None
+    :type search_id: Optional[str], optional
+    :return: Payload that can be POST to the generateId DWR endpoint
+    :rtype: str
+    """
+    if search_id is None:
+        page = "page=%2Fvol%2FbuscarTrenEnlaces.do\n"
+    else:
+        page = f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{search_id}\n"
+
+    payload = (
+        "callCount=1\n"
+        "c0-scriptName=__System\n"
+        "c0-methodName=generateId\n"
+        "c0-id=0\n"
+        f"batchId={str(batch_id)}\n"
+        "instanceId=0\n"
+        f"{page}"
+        "scriptSessionId=\n"
+        "windowName=\n"
+    )
+    return payload
+
+
+def extract_dwr_token(response_text: str) -> str:
+    """Extracts the DWR token from the API response of the generateId calls
+
+    :param response_text: The body of the generateId POST response
+    :type response_text: str
+    :raises InvalidDWRToken: If the token is not found in the response body
+    :return: The DWR token itself
+    :rtype: str
+    """
+    pattern = r'r\.handleCallback\("[^"]+","[^"]+","([^"]+)"\)'
+    match = re.search(pattern, response_text)
+
+    if match:
+        return match.group(1)
+    else:
+        raise InvalidDWRToken
+
+
 def create_cookiedict(
     origin: StationRecord,
     destination: StationRecord,
@@ -83,6 +132,11 @@ def create_cookiedict(
 
 
 def create_search_id() -> str:
+    """Generate the query parameter for Renfe searches, which has the format '_Aa#'
+
+    :return: search_id
+    :rtype: str
+    """
     search_id = "_"
     for _ in range(4):
         search_id += random.choice(string.ascii_letters + string.digits)
@@ -105,13 +159,18 @@ class Scraper:
         self.api = requests.Session()
         self.search_id = create_search_id()
 
-    def create_search(self):
-        data = create_payload(self.origin, self.destination, self.departure_date, self.return_date)
+        self.dwr_token = None
+
+    def do_search(self):
+        """Encapsulate the API calls that must be done to input the Renfe search page"""
+        data = create_search_payload(
+            self.origin, self.destination, self.departure_date, self.return_date
+        )
         cookies = create_cookiedict(self.origin, self.destination)
         self.api.cookies.set(**cookies)
         self.api.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-                          "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Accept-Encoding": "gzip, deflate",
             "Accept": "*/*",
             "Connection": "keep-alive",
@@ -119,3 +178,13 @@ class Scraper:
 
         r = self.api.post(SEARCH_URL, data=data, allow_redirects=True)
         assert r.ok
+
+    def do_get_dwr_token(self):
+        """Encapsulate the API calls that must be done to obtain the DWR token"""
+        SYSTEM_ID_URL = "https://venta.renfe.com/vol/dwr/call/plaincall/__System.generateId.dwr"
+        self.api.post(SYSTEM_ID_URL, data=create_generate_id_payload(0))
+        r = self.api.post(SYSTEM_ID_URL, data=create_generate_id_payload(1, self.search_id))
+        assert r.ok
+        self.dwr_token = extract_dwr_token(r.text)
+        self.api.cookies.set("DWRSESSIONID", self.dwr_token, path="/vol", domain="venta.renfe.com")
+

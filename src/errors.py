@@ -8,3 +8,7 @@ class RenfeBotException(BaseException):
 class StationNotFound(RenfeBotException):
     """Raise when the station provided is not found at the Stations file"""
     pass
+
+class InvalidDWRToken(RenfeBotException):
+    """Raise when the DWR token provided is invalid"""
+    pass

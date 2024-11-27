@@ -3,8 +3,8 @@ import json
 
 from typing import Any, Dict, Iterable, Optional
 
-from .errors import StationNotFound
-from .models import StationRecord
+from errors import StationNotFound
+from models import StationRecord
 
 STATIONS_PATH = "../assets/stations.json"
 

@@ -173,7 +173,10 @@ class Scraper:
         assert r.ok
 
     def do_get_train_list(self) -> None:
-        ...
+        payload = self._create_get_train_list_payload()
+        r = self.api.post(TRAIN_LIST_URL, data=payload)
+        assert r.ok
+        trains_list = r.text # TODO: This needs to be parsed
 
     def _create_search_payload(self) -> Dict[str, str]:
         """Creates the payload that will be send by POST to the Renfe search URL
@@ -247,6 +250,11 @@ class Scraper:
         return payload
 
     def _create_update_session_objects_payload(self) -> str:
+        """Generates the payload for the API calls to the update session objects DWR endpoint
+
+        :return: Payload that can be POST to the actualizaObjetosSesion DWR endpoint
+        :rtype: str
+        """
         payload = (
             "callCount=1\n"
             "windowName=\n"
@@ -257,6 +265,47 @@ class Scraper:
             "c0-e2=string:\n"
             "c0-param0=array:[reference:c0-e1,reference:c0-e2]\n"
             f"batchId={str(next(self.batch_id))}\n"
+            "instanceId=0\n"
+            f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
+            f"scriptSessionId={self.script_session_id}\n"
+        )
+        return payload
+
+    def _create_get_train_list_payload(self) -> str:
+        date_format = "%d/%m/%Y"
+        departure_date = (
+            "" if self.departure_date is None else self.departure_date.strftime(date_format)
+        )
+        return_date = "" if self.return_date is None else self.return_date.strftime(date_format)
+        payload = (
+            "callCount=1\n"
+            "windowName=\n"
+            "c0-scriptName=trainEnlacesManager\n"
+            "c0-methodName=getTrainsList\n"
+            "c0-id=0\n"
+            "c0-e1=string:false\n"
+            "c0-e2=string:false\n"
+            "c0-e3=string:false\n"
+            "c0-e4=string:\n"
+            "c0-e5=string:\n"
+            "c0-e6=string:\n"
+            "c0-e7=string:\n"
+            f"c0-e8=string:{urllib.parse.quote_plus(departure_date)}\n"
+            f"c0-e9=string:{urllib.parse.quote_plus(return_date)}\n"
+            "c0-e10=string:1\n"
+            "c0-e11=string:0\n"
+            "c0-e12=string:0\n"
+            f"c0-e13=string:{"I" if self.return_date is None else "IV"}\n"
+            "c0-e14=string:\n"
+
+            "c0-param0=Object_Object:{atendo:reference:c0-e1, sinEnlace:reference:c0-e2, "
+            "plazaH:reference:c0-e3, tipoFranjaI:reference:c0-e4, tipoFranjaV:reference:c0-e5, "
+            "horaFranjaIda:reference:c0-e6, horaFranjaVuelta:reference:c0-e7, fechaSalida:reference"
+            ":c0-e8, fechaVuelta:reference:c0-e9, adultos:reference:c0-e10, ninos:reference:c0-e11,"
+            " ninosMenores:reference:c0-e12, trayecto:reference:c0-e13, idaVuelta:reference:c0-e14}"
+            "\n"
+
+            f"batchId={next(self.batch_id)}\n"
             "instanceId=0\n"
             f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
             f"scriptSessionId={self.script_session_id}\n"

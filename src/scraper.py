@@ -1,9 +1,10 @@
 from datetime import datetime
 import random
 import re
-import requests
+from typing import Any, Dict, Generator, Optional
 import string
-from typing import Any, Dict, Optional
+
+import requests
 
 from errors import InvalidDWRToken
 from models import StationRecord
@@ -11,82 +12,22 @@ from storage import StationsStorage
 
 SEARCH_URL = "https://venta.renfe.com/vol/buscarTren.do?Idioma=es&Pais=ES"
 
+DWR_ENDPOINT = "https://venta.renfe.com/vol/dwr/call/plaincall/"
+SYSTEM_ID_URL = f"{DWR_ENDPOINT}__System.generateId.dwr"
+UPDATE_SESSION_URL = f"{DWR_ENDPOINT}buyEnlacesManager.actualizaObjetosSesion.dwr"
+TRAIN_LIST_URL = f"{DWR_ENDPOINT}trainEnlacesManager.getTrainsList.dwr"
 
-def create_search_payload(
-    origin: StationRecord,
-    destination: StationRecord,
-    departure_date: datetime,
-    return_date: Optional[datetime] = None,
-) -> Dict[str, str]:
-    """Creates the payload that will be send by POST to the Renfe search URL
 
-    :param origin: Origin station
-    :type origin: StationRecord
-    :param destination: Destination station
-    :type destination: StationRecord
-    :param departure_date: The departure date
-    :type departure_date: datetime
-    :param return_date: The return date, defaults to None as it's not required
-    :type return_date: Optional[datetime], optional
-    :return: The payload dict
-    :rtype: Dict[str, str]
+def get_idx() -> Generator:
+    """Yields numbers from 0 to inf
+
+    :yield: num
+    :rtype: int
     """
-    date_format = "%d/%m/%Y"
-    payload = {
-        "tipoBusqueda": "autocomplete",
-        "currenLocation": "menuBusqueda",
-        "vengoderenfecom": "SI",
-        "desOrigen": origin.name,
-        "desDestino": destination.name,
-        "cdgoOrigen": origin.code,
-        "cdgoDestino": destination.code,
-        "idiomaBusqueda": "ES",
-        "FechaIdaSel": departure_date.strftime(date_format),
-        "FechaVueltaSel": "" if return_date is None else return_date.strftime(date_format),
-        "_fechaIdaVisual": departure_date.strftime(date_format),
-        "_fechaVueltaVisual": "" if return_date is None else return_date.strftime(date_format),
-        "adultos_": "1",
-        "ninos_": "0",
-        "ninosMenores": "0",
-        "codPromocional": "",
-        "plazaH": "false",
-        "sinEnlace": "false",
-        "asistencia": "false",
-        "franjaHoraI": "",
-        "franjaHoraV": "",
-        "Idioma": "es",
-        "Pais": "ES",
-    }
-    return payload
-
-
-def create_generate_id_payload(batch_id: int, search_id: Optional[str] = None) -> str:
-    """Generates the payload for the API calls to the generateId DWR endpoint
-
-    :param batch_id: batchId of the operation
-    :type batch_id: int
-    :param search_id: defaults to None
-    :type search_id: Optional[str], optional
-    :return: Payload that can be POST to the generateId DWR endpoint
-    :rtype: str
-    """
-    if search_id is None:
-        page = "page=%2Fvol%2FbuscarTrenEnlaces.do\n"
-    else:
-        page = f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{search_id}\n"
-
-    payload = (
-        "callCount=1\n"
-        "c0-scriptName=__System\n"
-        "c0-methodName=generateId\n"
-        "c0-id=0\n"
-        f"batchId={str(batch_id)}\n"
-        "instanceId=0\n"
-        f"{page}"
-        "scriptSessionId=\n"
-        "windowName=\n"
-    )
-    return payload
+    num = 0
+    while True:
+        yield num
+        num += 1
 
 
 def extract_dwr_token(response_text: str) -> str:
@@ -143,6 +84,39 @@ def create_search_id() -> str:
     return search_id
 
 
+def create_session_script_id(dwr_token: str) -> str:
+    """Creates the sessionScriptId parameter required for the trains DWR calls, combining the DWR
+    token with a token based on the timestamp and another one random
+
+    :param dwr_token: The DWR token itself
+    :type dwr_token: str
+    :return: The session script id
+    :rtype: str
+    """
+    date_token = tokenify(int(datetime.now().timestamp() * 1000))
+    random_token = tokenify(int(random.random() * 1e16))
+    return f"{dwr_token}/{date_token}-{random_token}"
+
+
+def tokenify(number: int):
+    """Tokenify function used by the DWR framework, rewritten from Java to Python
+
+    :param number: _description_
+    :type number: int
+    :return: _description_
+    :rtype: _type_
+    """
+    tokenbuf = []
+    charmap = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*$"
+    remainder = number
+
+    while remainder > 0:
+        tokenbuf.append(charmap[remainder & 0x3F])
+        remainder //= 64
+
+    return "".join(tokenbuf)
+
+
 class Scraper:
     def __init__(
         self,
@@ -158,14 +132,14 @@ class Scraper:
 
         self.api = requests.Session()
         self.search_id = create_search_id()
+        self.batch_id = get_idx()
 
         self.dwr_token = None
+        self.script_session_id = None
 
-    def do_search(self):
+    def do_search(self) -> None:
         """Encapsulate the API calls that must be done to input the Renfe search page"""
-        data = create_search_payload(
-            self.origin, self.destination, self.departure_date, self.return_date
-        )
+        data = self._create_search_payload()
         cookies = create_cookiedict(self.origin, self.destination)
         self.api.cookies.set(**cookies)
         self.api.headers = {
@@ -179,12 +153,113 @@ class Scraper:
         r = self.api.post(SEARCH_URL, data=data, allow_redirects=True)
         assert r.ok
 
-    def do_get_dwr_token(self):
+    def do_get_dwr_token(self) -> None:
         """Encapsulate the API calls that must be done to obtain the DWR token"""
-        SYSTEM_ID_URL = "https://venta.renfe.com/vol/dwr/call/plaincall/__System.generateId.dwr"
-        self.api.post(SYSTEM_ID_URL, data=create_generate_id_payload(0))
-        r = self.api.post(SYSTEM_ID_URL, data=create_generate_id_payload(1, self.search_id))
+        payload = self._create_generate_id_payload()
+        self.api.post(SYSTEM_ID_URL, data=payload)
+
+        payload = self._create_generate_id_payload()
+        r = self.api.post(SYSTEM_ID_URL, data=payload)
         assert r.ok
+
         self.dwr_token = extract_dwr_token(r.text)
         self.api.cookies.set("DWRSESSIONID", self.dwr_token, path="/vol", domain="venta.renfe.com")
+        self.script_session_id = create_session_script_id(self.dwr_token)
+
+    def do_update_session_objects(self) -> None:
+        """Encapsulate the API calls that must be done to update the DWR session objects"""
+        payload = self._create_update_session_objects_payload()
+        r = self.api.post(UPDATE_SESSION_URL, data=payload)
+        assert r.ok
+
+    def do_get_train_list(self) -> None:
+        ...
+
+    def _create_search_payload(self) -> Dict[str, str]:
+        """Creates the payload that will be send by POST to the Renfe search URL
+
+        :param origin: Origin station
+        :type origin: StationRecord
+        :param destination: Destination station
+        :type destination: StationRecord
+        :param departure_date: The departure date
+        :type departure_date: datetime
+        :param return_date: The return date, defaults to None as it's not required
+        :type return_date: Optional[datetime], optional
+        :return: The payload dict
+        :rtype: Dict[str, str]
+        """
+        date_format = "%d/%m/%Y"
+        return_date = "" if self.return_date is None else self.return_date.strftime(date_format)
+        payload = {
+            "tipoBusqueda": "autocomplete",
+            "currenLocation": "menuBusqueda",
+            "vengoderenfecom": "SI",
+            "desOrigen": self.origin.name,
+            "desDestino": self.destination.name,
+            "cdgoOrigen": self.origin.code,
+            "cdgoDestino": self.destination.code,
+            "idiomaBusqueda": "ES",
+            "FechaIdaSel": self.departure_date.strftime(date_format),
+            "FechaVueltaSel": return_date,
+            "_fechaIdaVisual": self.departure_date.strftime(date_format),
+            "_fechaVueltaVisual": return_date,
+            "adultos_": "1",
+            "ninos_": "0",
+            "ninosMenores": "0",
+            "codPromocional": "",
+            "plazaH": "false",
+            "sinEnlace": "false",
+            "asistencia": "false",
+            "franjaHoraI": "",
+            "franjaHoraV": "",
+            "Idioma": "es",
+            "Pais": "ES",
+        }
+        return payload
+
+    def _create_generate_id_payload(self) -> str:
+        """Generates the payload for the API calls to the generateId DWR endpoint
+
+        :param batch_id: batchId of the operation
+        :type batch_id: int
+        :param search_id: defaults to None
+        :type search_id: Optional[str], optional
+        :return: Payload that can be POST to the generateId DWR endpoint
+        :rtype: str
+        """
+        if self.search_id is None:
+            page = "page=%2Fvol%2FbuscarTrenEnlaces.do\n"
+        else:
+            page = f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
+
+        payload = (
+            "callCount=1\n"
+            "c0-scriptName=__System\n"
+            "c0-methodName=generateId\n"
+            "c0-id=0\n"
+            f"batchId={str(next(self.batch_id))}\n"
+            "instanceId=0\n"
+            f"{page}"
+            "scriptSessionId=\n"
+            "windowName=\n"
+        )
+        return payload
+
+    def _create_update_session_objects_payload(self) -> str:
+        payload = (
+            "callCount=1\n"
+            "windowName=\n"
+            "c0-scriptName=buyEnlacesManager\n"
+            "c0-methodName=actualizaObjetosSesion\n"
+            "c0-id=0\n"
+            f"c0-e1=string:{self.search_id}\n"
+            "c0-e2=string:\n"
+            "c0-param0=array:[reference:c0-e1,reference:c0-e2]\n"
+            f"batchId={str(next(self.batch_id))}\n"
+            "instanceId=0\n"
+            f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
+            f"scriptSessionId={self.script_session_id}\n"
+        )
+        return payload
 

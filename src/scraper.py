@@ -1,15 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import random
 import re
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional
 import string
 import urllib.parse
 
 import requests
 
 from errors import InvalidDWRToken
-from models import StationRecord
+from models import StationRecord, TrainRideRecord
 from storage import StationsStorage
 
 SEARCH_URL = "https://venta.renfe.com/vol/buscarTren.do?Idioma=es&Pais=ES"
@@ -40,7 +40,50 @@ class Scraper:
         self.dwr_token = None
         self.script_session_id = None
 
-    def do_search(self) -> None:
+    def get_trainrides(self) -> List[TrainRideRecord]:
+        self._do_search()
+        self._do_get_dwr_token()
+        self._do_update_session_objects()
+        trains = self._do_get_train_list()
+        return self._parse_train_list(trains)
+
+    def _parse_train_list(self, trains: Dict[str, Any]) -> List[TrainRideRecord]:
+        trains_records = []
+        for idx, train_way in enumerate(trains["listadoTrenes"]):
+            departure_direction = [self.origin.name, self.destination.name]
+            departure_time = self.departure_date if idx == 0 else self.return_date
+            assert departure_time is not None # if idx eqs 1, it's because return_date is given
+
+            if idx == 1:
+                departure_direction.reverse()
+
+            origin, destination = departure_direction
+            for train in train_way["listviajeViewEnlaceBean"]:
+                train_record = TrainRideRecord(
+                    origin=origin,
+                    destination=destination,
+                    departure_time=self._add_hour_to_datatime(train["horaSalida"], departure_time),
+                    arrival_time=self._add_hour_to_datatime(train["horaLlegada"], departure_time),
+                    duration=train["duracionViajeTotalEnMinutos"],
+                    price=float(train["tarifaMinima"].replace(",", ".")),
+                    available=self._is_train_available(train),
+                    train_type=train.get("tipoTrenUno", "N/A")
+                )
+                trains_records.append(train_record)
+
+        return trains_records
+
+    @staticmethod
+    def _is_train_available(train: Dict[str, Any]) -> bool:
+        return not train["completo"] and train["razonNoDisponible"] in ["", "8"]
+
+    @staticmethod
+    def _add_hour_to_datatime(hour: str, date: datetime) -> datetime:
+        hours, minutes = map(int, hour.split(':'))
+        time_delta = timedelta(hours=hours, minutes=minutes)
+        return date + time_delta
+
+    def _do_search(self) -> None:
         """Encapsulate the API calls that must be done to input the Renfe search page"""
         data = self._create_search_payload()
         cookies = create_cookiedict(self.origin, self.destination)
@@ -56,7 +99,7 @@ class Scraper:
         r = self.api.post(SEARCH_URL, data=data, allow_redirects=True)
         assert r.ok
 
-    def do_get_dwr_token(self) -> None:
+    def _do_get_dwr_token(self) -> None:
         """Encapsulate the API calls that must be done to obtain the DWR token"""
         payload = self._create_generate_id_payload()
         self.api.post(SYSTEM_ID_URL, data=payload)
@@ -69,13 +112,13 @@ class Scraper:
         self.api.cookies.set("DWRSESSIONID", self.dwr_token, path="/vol", domain="venta.renfe.com")
         self.script_session_id = create_session_script_id(self.dwr_token)
 
-    def do_update_session_objects(self) -> None:
+    def _do_update_session_objects(self) -> None:
         """Encapsulate the API calls that must be done to update the DWR session objects"""
         payload = self._create_update_session_objects_payload()
         r = self.api.post(UPDATE_SESSION_URL, data=payload)
         assert r.ok
 
-    def do_get_train_list(self) -> Dict[str, Any]:
+    def _do_get_train_list(self) -> Dict[str, Any]:
         """Encapsulate the API calls that must be done to get and parse the trains list"""
         payload = self._create_get_train_list_payload()
         r = self.api.post(TRAIN_LIST_URL, data=payload)

@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
-import json
 import random
 import re
 from typing import Any, Dict, Generator, List, Optional
 import string
 import urllib.parse
 
+import json5
 import requests
 
 from errors import InvalidDWRToken
@@ -59,13 +59,14 @@ class Scraper:
 
             origin, destination = departure_direction
             for train in train_way["listviajeViewEnlaceBean"]:
+                price = train["tarifaMinima"] or "NaN"
                 train_record = TrainRideRecord(
                     origin=origin,
                     destination=destination,
                     departure_time=self._add_hour_to_datatime(train["horaSalida"], departure_time),
                     arrival_time=self._add_hour_to_datatime(train["horaLlegada"], departure_time),
                     duration=train["duracionViajeTotalEnMinutos"],
-                    price=float(train["tarifaMinima"].replace(",", ".")),
+                    price=float(price.replace(",", ".")),
                     available=self._is_train_available(train),
                     train_type=train.get("tipoTrenUno", "N/A")
                 )
@@ -75,7 +76,11 @@ class Scraper:
 
     @staticmethod
     def _is_train_available(train: Dict[str, Any]) -> bool:
-        return not train["completo"] and train["razonNoDisponible"] in ["", "8"]
+        return (
+            not train["completo"]
+            and train["razonNoDisponible"] in ["", "8"]
+            and train["tarifaMinima"] is not None
+        )
 
     @staticmethod
     def _add_hour_to_datatime(hour: str, date: datetime) -> datetime:
@@ -298,16 +303,7 @@ def extract_train_list(response_text: str) -> Dict[str, Any]:
     """
     match = re.search(r'r\.handleCallback\([^,]+,\s*[^,]+,\s*(\{.*\})\);', response_text, re.DOTALL)
     assert match is not None
-    js_object = match.group(1)
-    js_object = js_object.strip()  # Remove any leading/trailing whitespace
-    js_object = js_object.replace("Vuelta:", "Vuelta") # Remove semicolon inside value
-    js_object = js_object.replace("://", "//") # Remove semicolon inside value
-    js_object = re.sub(r',\s*}', '}', js_object)  # Remove trailing commas before closing braces
-    js_object = re.sub(r',\s*]', ']', js_object)  # Remove trailing commas before closing brackets
-    js_object = re.sub(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'"\1":', js_object)  # Quote keys
-    js_object = js_object.replace("'", '"')  # Replace single quotes with double quotes
-    parsed_data = json.loads(js_object)
-    return parsed_data
+    return json5.loads(match.group(1))
 
 
 def create_cookiedict(

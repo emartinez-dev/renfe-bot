@@ -41,6 +41,11 @@ class Scraper:
         self.script_session_id = None
 
     def get_trainrides(self) -> List[TrainRideRecord]:
+        """Perform all the functions calls needed to obtain the trains list
+
+        :return: List of train rides objects
+        :rtype: List[TrainRideRecord]
+        """
         self._do_search()
         self._do_get_dwr_token()
         self._do_update_session_objects()
@@ -48,11 +53,18 @@ class Scraper:
         return self._parse_train_list(trains)
 
     def _parse_train_list(self, trains: Dict[str, Any]) -> List[TrainRideRecord]:
+        """Creates the list of train objects from the JSON
+
+        :param trains: trains dictionary
+        :type trains: Dict[str, Any]
+        :return: List of train rides objects
+        :rtype: List[TrainRideRecord]
+        """
         trains_records = []
         for idx, train_way in enumerate(trains["listadoTrenes"]):
             departure_direction = [self.origin.name, self.destination.name]
             departure_time = self.departure_date if idx == 0 else self.return_date
-            assert departure_time is not None # if idx eqs 1, it's because return_date is given
+            assert departure_time is not None  # if idx eqs 1, it's because return_date is given
 
             if idx == 1:
                 departure_direction.reverse()
@@ -68,7 +80,7 @@ class Scraper:
                     duration=train["duracionViajeTotalEnMinutos"],
                     price=float(price.replace(",", ".")),
                     available=self._is_train_available(train),
-                    train_type=train.get("tipoTrenUno", "N/A")
+                    train_type=train.get("tipoTrenUno", "N/A"),
                 )
                 trains_records.append(train_record)
 
@@ -76,6 +88,13 @@ class Scraper:
 
     @staticmethod
     def _is_train_available(train: Dict[str, Any]) -> bool:
+        """Return whether a train is available from the train dict
+
+        :param train: Trains dictionary
+        :type train: Dict[str, Any]
+        :return: Whether the train is available or not
+        :rtype: bool
+        """
         return (
             not train["completo"]
             and train["razonNoDisponible"] in ["", "8"]
@@ -84,7 +103,8 @@ class Scraper:
 
     @staticmethod
     def _add_hour_to_datatime(hour: str, date: datetime) -> datetime:
-        hours, minutes = map(int, hour.split(':'))
+        """Add an hour to a date"""
+        hours, minutes = map(int, hour.split(":"))
         time_delta = timedelta(hours=hours, minutes=minutes)
         return date + time_delta
 
@@ -301,7 +321,7 @@ def extract_train_list(response_text: str) -> Dict[str, Any]:
     :return: Trains JSON
     :rtype: Dict[str, Any]
     """
-    match = re.search(r'r\.handleCallback\([^,]+,\s*[^,]+,\s*(\{.*\})\);', response_text, re.DOTALL)
+    match = re.search(r"r\.handleCallback\([^,]+,\s*[^,]+,\s*(\{.*\})\);", response_text, re.DOTALL)
     assert match is not None
     return json5.loads(match.group(1))
 

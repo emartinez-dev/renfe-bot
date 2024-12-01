@@ -28,17 +28,22 @@ class TrainRideRecord(BaseModel):
     train_type: str = Field(description="Train type")
 
     def __str__(self):
-        date_format = "%d/%m/%Y %H:%M"
-        availability = "Available" if self.available else "Not Available"
-        hours, minutes = divmod(self.duration, 60)
-        duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+        date_format = "%H:%M"
         return (
-            f"<TrainRideRecord(train_type={self.train_type}, origin={self.origin}, "
+            f"🚆 Tren {self.train_type}: 🕒 {self.departure_time.strftime(date_format)} - "
+            f"{self.arrival_time.strftime(date_format)} 🕙 - {self.price:.2f} €\n"
+        )
+
+    def  _repr__(self):
+        date_format = "%d/%m/%Y %H:%M"
+        hours, minutes = divmod(self.duration, 60)
+        availability = "Available" if self.available else "Not Available"
+        duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+        return (f"<TrainRideRecord(train_type={self.train_type}, origin={self.origin}, "
             f"destination={self.destination}, departure_time="
             f"{self.departure_time.strftime(date_format)}, arrival_time="
             f"{self.arrival_time.strftime(date_format)}, duration={duration_str}, "
-            f"price={self.price:.2f} €, availability={availability})>"
-        )
+            f"price={self.price:.2f} €, availability={availability})>")
 
 class TrainRideFilter(BaseModel):
     """Represents filtering criteria for train rides."""

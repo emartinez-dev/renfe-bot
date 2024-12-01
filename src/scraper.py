@@ -1,3 +1,5 @@
+"""File containing all the logic to obtain the train rides from Renfe website."""
+
 from datetime import datetime, timedelta
 import random
 import re
@@ -21,6 +23,23 @@ TRAIN_LIST_URL = f"{DWR_ENDPOINT}trainEnlacesManager.getTrainsList.dwr"
 
 
 class Scraper:
+    """Scraper class that encapsulates the whole logic of obtaining the Renfe train rides from their
+    website.
+
+    It makes use of their backend implementation, which uses DWR (Direct Web Remoting) to enable
+    async calls from Java. I think (and hope) that this app will be migrated sooner than later to
+    a more modern framework, because everything is a mess on their part.
+
+    :param origin: Origin station, from where users starts their trip.
+    :type origin: StationRecord
+    :param destination: Destination station, where users will arrive.
+    :type destination: StationRecord
+    :param departure_date: The day when users will take the train from origin.
+    :type departure_date: datetime
+    :param return_date: The day users will return if it's not a one way ride, defaults to None
+    :type return_date: Optional[datetime], optional
+    """
+
     def __init__(
         self,
         origin: StationRecord,
@@ -28,6 +47,7 @@ class Scraper:
         departure_date: datetime,
         return_date: Optional[datetime] = None,
     ):
+        """Initialize an Scraper object"""
         self.origin = origin
         self.destination = destination
         self.departure_date = departure_date
@@ -244,6 +264,11 @@ class Scraper:
         return payload
 
     def _create_get_train_list_payload(self) -> str:
+        """Generates the payload for the API calls to get the trains list endpoint
+
+        :return: Payload that can be POST to the getTrainsList DWR endpoint
+        :rtype: str
+        """
         date_format = "%d/%m/%Y"
         departure_date = (
             "" if self.departure_date is None else self.departure_date.strftime(date_format)

@@ -1,6 +1,9 @@
-from datetime import datetime
+from datetime import datetime, time
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
+
+from errors import InvalidTrainRideFilter
 
 class StationRecord(BaseModel):
     """Represents a Station, using Renfe's data definition. It can be seen at the file
@@ -36,3 +39,44 @@ class TrainRideRecord(BaseModel):
             f"{self.arrival_time.strftime(date_format)}, duration={duration_str}, "
             f"price={self.price:.2f} €, availability={availability})>"
         )
+
+class TrainRideFilter(BaseModel):
+    """Represents filtering criteria for train rides."""
+    origin: str
+    destination: str
+
+    departure_date: datetime
+
+    min_departure_hour: Optional[time] = None
+    max_departure_hour: Optional[time] = None
+    max_duration_minutes: Optional[int] = None
+
+    max_price: Optional[float] = None
+
+    def filter_rides(self, rides: List[TrainRideRecord]) -> List[TrainRideRecord]:
+        """Filter a list of TrainRideRecord based on user preferences."""
+        filtered_rides = []
+        unavailable_rides = 0
+        for ride in rides:
+            if ride.origin != self.origin or ride.destination != self.destination:
+                continue
+            if ride.departure_time.date() != self.departure_date.date():
+                continue
+            if self.min_departure_hour and ride.departure_time.time() < self.min_departure_hour:
+                continue
+            if self.max_departure_hour and ride.departure_time.time() > self.max_departure_hour:
+                continue
+            if self.max_duration_minutes and ride.duration > self.max_duration_minutes:
+                continue
+            if self.max_price and ride.price > self.max_price:
+                continue
+            if not ride.available:
+                unavailable_rides += 1
+                continue
+            filtered_rides.append(ride)
+
+        if len(filtered_rides) == 0 and unavailable_rides == 0:
+            raise InvalidTrainRideFilter(
+                f"The filter {self} didn't return any result, available or not."
+            )
+        return filtered_rides

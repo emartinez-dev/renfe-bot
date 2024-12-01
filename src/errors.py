@@ -12,3 +12,7 @@ class StationNotFound(RenfeBotException):
 class InvalidDWRToken(RenfeBotException):
     """Raise when the DWR token provided is invalid"""
     pass
+
+class InvalidTrainRideFilter(RenfeBotException):
+    """Raise when the filter input by the user didn't return any result, available or not"""
+    pass

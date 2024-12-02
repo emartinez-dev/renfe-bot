@@ -20,6 +20,9 @@ command should work. If the issue persists, please open an issue on GitHub.
 
 #### Requirements
 
+This project has been developed using the latest Python version available at the moment
+(`3.12.7`). It's possible that it works for older Python 3 versions, but I didn't test it.
+
 The required dependencies to run this project are included in the
 `requirements.txt` file. To install the requirements, use the following command:
 
@@ -34,10 +37,8 @@ Follow the below steps to install and set up the Renfe-bot:
 1. Clone this repository to your local machine.
 2. Install the required dependencies using the command mentioned in the
    'Requirements' section.
-3. Install playwright and its dependencies with the following commands: `playwright install && playwright install-deps`
-4. Run the bot by executing it (`python renfe-bot.py`) in the root
-   directory of the project.
-5. Anything required like the API key will be prompted for when you run the bot
+3. Run the bot by executing it (`python src/bot.py`).
+4. Anything required like the API key will be prompted for when you run the bot
    for the first time.
 
 ### Option B: Running it as a Docker container 

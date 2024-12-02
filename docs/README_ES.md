@@ -18,9 +18,12 @@ persiste, por favor abre un ticket en GitHub.
 
 ## Como utilizar el bot
 
-### Opción A: Correrlo normalmente en tu ordenador
+### Opción A: Correrlo Normalmente en tu ordenador
 
 #### Requisitos
+
+Este proyecto ha sido desarrollado utilizando la última versión de Python disponible ahora mismo
+(`3.12.7`). Puede que funcione con versiones anteriores de Python 3, pero no lo he probado.
 
 Las dependencias requeridas para ejecutar este proyecto están incluidas en el
 archivo `requirements.txt`. Para instalar los requisitos, usa el siguiente
@@ -37,10 +40,8 @@ Sigue los siguientes pasos para instalar y configurar el Renfe-bot:
 1. Clona este repositorio en tu máquina local.
 2. Instala las dependencias requeridas utilizando el comando mencionado en la
    sección 'Requisitos'.
-3. Instalar playwright y sus dependencias con los siguientes comandos: `playwright install && playwright install-deps`
-4. Ejecuta el bot ejecutándolo (`python bot/renfe-bot.py`) en el directorio raíz
-   del proyecto.
-5. Cualquier dato requerido, como la clave API, se solicitará cuando ejecutes el
+3. Ejecuta el bot ejecutándolo con (`python src/bot.py`).
+4. Cualquier dato requerido, como la clave API, se solicitará cuando ejecutes el
    bot por primera vez.
 
 ### Opción B: Correrlo en un container de Docker

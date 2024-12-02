@@ -87,7 +87,7 @@ def get_bot_token() -> str:
 TOKEN = get_bot_token()
 bot = telebot.TeleBot(TOKEN)
 searching = False
-print("Ya estoy corriendo! Corre a Telegram e interactúa conmigo")
+print("Ya estoy corriendo! Corre a Telegram e interactúa conmigo con los comandos /start o /help")
 
 
 @bot.message_handler(commands=["start"])

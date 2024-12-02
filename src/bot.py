@@ -1,6 +1,7 @@
 import configparser
 from datetime import datetime, time
 from textwrap import dedent
+import pickle
 import time as time_module
 from typing import Dict, Any, List
 
@@ -110,12 +111,12 @@ def send_help(message: telebot.types.Message):
         dedent("""\
         /ayuda - Muestra los comandos disponibles
         /buscar - Busca billetes de tren
+        /reintentar - Vuelve a lanzar la última búsqueda
         /cancelar - Cancela la búsqueda en curso
         """),
     )
 
 
-"""
 @bot.message_handler(commands=["reintentar"])
 def send_retry(message: telebot.types.Message):
     if searching:
@@ -125,34 +126,11 @@ def send_retry(message: telebot.types.Message):
         )
         return
     try:
-        with open("last_input.json", "r", encoding="utf-8") as f:
-            context = json.load(f)
+        with open("last_input.pkl", "rb") as f:
+            context = pickle.load(f)
         search_trains(message, context)
     except FileNotFoundError:
         bot.send_message(message.chat.id, "No hay ninguna búsqueda anterior")
-
-
-@bot.message_handler(commands=["debug"])
-def send_debug(message: telebot.types.Message):
-    assert message.from_user is not None
-    assert message.from_user.username is not None
-
-    logs = os.listdir("logs")
-    user_logs = []
-    for log in logs:
-        if message.from_user.username in log:
-            user_logs.append(log)
-
-    if len(user_logs) == 0:
-        bot.send_message(message.chat.id, "No hay logs disponibles")
-    else:
-        bot.send_message(
-            message.chat.id, "Envía este documento a los desarrolladores para que puedan ayudarte:"
-        )
-        user_logs.sort(reverse=True)
-        with open(f"logs/{user_logs[0]}", "rb", encoding="utf-8") as f:
-            bot.send_document(message.chat.id, f.read())
-"""
 
 
 @bot.message_handler(commands=["cancelar"])
@@ -200,7 +178,7 @@ def ask_for_origin(message: telebot.types.Message, context):
                         f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
                         f"{'\n'.join(possible_stations)}."
                         "\nPor favor, introduce la tuya de nuevo"
-                    )
+                    ),
                 )
         bot.register_next_step_handler(message, ask_for_origin, context)
 
@@ -226,7 +204,7 @@ def ask_for_destination(message: telebot.types.Message, context):
                         f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
                         f"{'\n'.join(possible_stations)}."
                         "\nPor favor, introduce la tuya de nuevo"
-                    )
+                    ),
                 )
         bot.register_next_step_handler(message, ask_for_destination, context)
 
@@ -389,6 +367,9 @@ def search_trains(message: telebot.types.Message, context: Dict[str, Any]):
                 max_duration_minutes=context.get("max_duration_minutes"),
                 max_price=context.get("max_price"),
             )
+
+        with open("last_input.pkl", "wb") as f:
+            pickle.dump(context, f)
 
         while not departure_done or not return_done:
             trains = scraper.get_trainrides()

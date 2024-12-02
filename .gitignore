@@ -1,6 +1,7 @@
 env.py
 config.ini
 estacionesEstaticas.js
+last_input.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

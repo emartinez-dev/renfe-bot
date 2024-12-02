@@ -1,7 +1,8 @@
 import itertools
 import json
 
-from typing import Any, Dict, Iterable, Optional
+from thefuzz import process
+from typing import Any, Dict, List, Iterable, Optional
 
 from errors import StationNotFound
 from models import StationRecord
@@ -52,6 +53,23 @@ class StationsStorage:
 
         assert isinstance(station, dict)
         return StationRecord(name=station['desgEstacion'], code=station['clave'])
+
+    @classmethod
+    def find_station(cls, name: str) -> List[str]:
+        """Retrieves a list of station records fuzzy finding the names
+
+        :param name: The name of the station to retrieve
+        :type name: str
+        :raises StationNotFound: If the station is not found in the storage.
+        :return: The names of similar stations, containing its name and code
+        :rtype: strings
+        """
+
+        if cls.stations is None:
+            cls.stations = load_json(STATIONS_PATH)
+
+        guesses = process.extractBests(name, cls.stations.keys(), score_cutoff=90)
+        return [guess[0] for guess in guesses]
 
     @classmethod
     def get_all_stations(cls) -> Iterable[StationRecord]:

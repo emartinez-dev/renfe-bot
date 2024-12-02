@@ -1,12 +1,13 @@
 import configparser
 from datetime import datetime, time
 from textwrap import dedent
+import time as time_module
 from typing import Dict, Any, List
 
 import requests
 import telebot
 
-from errors import StationNotFound
+from errors import InvalidTrainRideFilter, StationNotFound, InvalidDWRToken
 from messages import user_messages
 from models import StationRecord, TrainRideFilter, TrainRideRecord
 from scraper import Scraper
@@ -188,7 +189,19 @@ def ask_for_origin(message: telebot.types.Message, context):
         bot.register_next_step_handler(message, ask_for_destination, context)
 
     except StationNotFound:
-        bot.send_message(message.chat.id, user_messages["station_not_found"])
+        if message.text is not None:
+            possible_stations = StationsStorage.find_station(message.text)
+            if len(possible_stations) == 0:
+                bot.send_message(message.chat.id, user_messages["station_not_found"])
+            else:
+                bot.send_message(
+                    message.chat.id,
+                    (
+                        f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
+                        f"{'\n'.join(possible_stations)}."
+                        "\nPor favor, introduce la tuya de nuevo"
+                    )
+                )
         bot.register_next_step_handler(message, ask_for_origin, context)
 
 
@@ -202,7 +215,19 @@ def ask_for_destination(message: telebot.types.Message, context):
         bot.register_next_step_handler(message, ask_for_departure_date, context)
 
     except StationNotFound:
-        bot.send_message(message.chat.id, user_messages["station_not_found"])
+        if message.text is not None:
+            possible_stations = StationsStorage.find_station(message.text)
+            if len(possible_stations) == 0:
+                bot.send_message(message.chat.id, user_messages["station_not_found"])
+            else:
+                bot.send_message(
+                    message.chat.id,
+                    (
+                        f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
+                        f"{'\n'.join(possible_stations)}."
+                        "\nPor favor, introduce la tuya de nuevo"
+                    )
+                )
         bot.register_next_step_handler(message, ask_for_destination, context)
 
 
@@ -337,34 +362,34 @@ def search_trains(message: telebot.types.Message, context: Dict[str, Any]):
     departure_done = False
     return_done = context.get("return_date", None) is None
 
-    scraper = Scraper(
-        context["origin"],
-        context["destination"],
-        context["departure_date"],
-        context.get("return_date"),
-    )
-    departure_filter = TrainRideFilter(
-        origin=context["origin"].name,
-        destination=context["destination"].name,
-        departure_date=context["departure_date"],
-        min_departure_hour=context.get("min_departure_hour"),
-        max_departure_hour=context.get("max_departure_hour"),
-        max_duration_minutes=context.get("max_duration_minutes"),
-        max_price=context.get("max_price"),
-    )
-
-    if not return_done:
-        return_filter = TrainRideFilter(
-            origin=context["destination"].name,
-            destination=context["origin"].name,
-            departure_date=context.get("return_date"),
-            min_departure_hour=context.get("min_return_hour"),
-            max_departure_hour=context.get("max_return_hour"),
+    try:
+        scraper = Scraper(
+            context["origin"],
+            context["destination"],
+            context["departure_date"],
+            context.get("return_date"),
+        )
+        departure_filter = TrainRideFilter(
+            origin=context["origin"].name,
+            destination=context["destination"].name,
+            departure_date=context["departure_date"],
+            min_departure_hour=context.get("min_departure_hour"),
+            max_departure_hour=context.get("max_departure_hour"),
             max_duration_minutes=context.get("max_duration_minutes"),
             max_price=context.get("max_price"),
         )
 
-    try:
+        if not return_done:
+            return_filter = TrainRideFilter(
+                origin=context["destination"].name,
+                destination=context["origin"].name,
+                departure_date=context.get("return_date"),
+                min_departure_hour=context.get("min_return_hour"),
+                max_departure_hour=context.get("max_return_hour"),
+                max_duration_minutes=context.get("max_duration_minutes"),
+                max_price=context.get("max_price"),
+            )
+
         while not departure_done or not return_done:
             trains = scraper.get_trainrides()
             if not departure_done:
@@ -387,14 +412,36 @@ def search_trains(message: telebot.types.Message, context: Dict[str, Any]):
                             return_trains, context["destination"], context["origin"]
                         ),
                     )
+            if not return_done or not departure_done:
+                time_module.sleep(60)
         searching = False
         print("Búsqueda completada")
 
-    except Exception as e:
-        bot.send_message(message.chat.id, "Algo ha fallado, info:")
-        bot.send_message(message.chat.id, e.__str__())
-        print("La búsqueda ha fallado")
+    except InvalidTrainRideFilter:
         searching = False
+        bot.send_message(
+            message.chat.id,
+            (
+                "El filtro introducido no es válido o no se encontró ningún tren con estos parámetros,"
+                " por favor, inténtalo de nuevo."
+            ),
+        )
+
+    except InvalidDWRToken:
+        searching = False
+        bot.send_message(
+            message.chat.id,
+            (
+                "Si esto ocurre, Renfe ha actualizado por fin su web. Por favor, abre una issue en "
+                "github para que pueda revisarlo."
+            ),
+        )
+
+    except BaseException as e:
+        searching = False
+        bot.send_message(
+            message.chat.id, f"Oops, algo se ha roto y no sé el qué. Aquí va toda la traza: {e}"
+        )
 
 
 bot.polling()

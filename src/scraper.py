@@ -10,7 +10,7 @@ import urllib.parse
 import json5
 import requests
 
-from errors import InvalidDWRToken
+from errors import InvalidDWRToken, InvalidTrainRideFilter
 from models import StationRecord, TrainRideRecord
 from storage import StationsStorage
 
@@ -59,6 +59,9 @@ class Scraper:
 
         self.dwr_token = None
         self.script_session_id = None
+
+        if return_date is not None and return_date < departure_date:
+            raise InvalidTrainRideFilter
 
     def get_trainrides(self) -> List[TrainRideRecord]:
         """Perform all the functions calls needed to obtain the trains list

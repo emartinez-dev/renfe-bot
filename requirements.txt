@@ -12,8 +12,10 @@ pydantic_core==2.27.1
 pyTelegramBotAPI==4.24.0
 pytest==8.3.3
 pytest-cov==6.0.0
+RapidFuzz==3.10.1
 regex==2024.11.6
 requests==2.32.3
 sly==0.5
+thefuzz==0.22.1
 typing_extensions==4.12.2
 urllib3==2.2.3

@@ -1,8 +1,10 @@
+"""Module to contain the storage functions"""
+
 import itertools
 import json
+from typing import Any, Dict, List, Iterable, Optional
 
 from thefuzz import process
-from typing import Any, Dict, List, Iterable, Optional
 
 from errors import StationNotFound
 from models import StationRecord

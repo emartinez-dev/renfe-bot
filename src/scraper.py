@@ -12,7 +12,6 @@ import requests
 
 from errors import InvalidDWRToken, InvalidTrainRideFilter
 from models import StationRecord, TrainRideRecord
-from storage import StationsStorage
 
 SEARCH_URL = "https://venta.renfe.com/vol/buscarTren.do?Idioma=es&Pais=ES"
 

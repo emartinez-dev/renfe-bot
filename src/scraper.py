@@ -20,6 +20,7 @@ SYSTEM_ID_URL = f"{DWR_ENDPOINT}__System.generateId.dwr"
 UPDATE_SESSION_URL = f"{DWR_ENDPOINT}buyEnlacesManager.actualizaObjetosSesion.dwr"
 TRAIN_LIST_URL = f"{DWR_ENDPOINT}trainEnlacesManager.getTrainsList.dwr"
 
+nl = "\n"
 
 class Scraper:
     """Scraper class that encapsulates the whole logic of obtaining the Renfe train rides from their
@@ -228,14 +229,14 @@ class Scraper:
         if self.search_id is None:
             page = "page=%2Fvol%2FbuscarTrenEnlaces.do\n"
         else:
-            page = f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
+            page = f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}{nl}"
 
         payload = (
             "callCount=1\n"
             "c0-scriptName=__System\n"
             "c0-methodName=generateId\n"
             "c0-id=0\n"
-            f"batchId={str(next(self.batch_id))}\n"
+            f"batchId={str(next(self.batch_id))}{nl}"
             "instanceId=0\n"
             f"{page}"
             "scriptSessionId=\n"
@@ -255,13 +256,13 @@ class Scraper:
             "c0-scriptName=buyEnlacesManager\n"
             "c0-methodName=actualizaObjetosSesion\n"
             "c0-id=0\n"
-            f"c0-e1=string:{self.search_id}\n"
+            f"c0-e1=string:{self.search_id}{nl}"
             "c0-e2=string:\n"
             "c0-param0=array:[reference:c0-e1,reference:c0-e2]\n"
-            f"batchId={str(next(self.batch_id))}\n"
+            f"batchId={str(next(self.batch_id))}{nl}"
             "instanceId=0\n"
-            f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
-            f"scriptSessionId={self.script_session_id}\n"
+            f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}{nl}"
+            f"scriptSessionId={self.script_session_id}{nl}"
         )
         return payload
 
@@ -289,12 +290,12 @@ class Scraper:
             "c0-e5=string:\n"
             "c0-e6=string:\n"
             "c0-e7=string:\n"
-            f"c0-e8=string:{urllib.parse.quote_plus(departure_date)}\n"
-            f"c0-e9=string:{urllib.parse.quote_plus(return_date)}\n"
+            f"c0-e8=string:{urllib.parse.quote_plus(departure_date)}{nl}"
+            f"c0-e9=string:{urllib.parse.quote_plus(return_date)}{nl}"
             "c0-e10=string:1\n"
             "c0-e11=string:0\n"
             "c0-e12=string:0\n"
-            f"c0-e13=string:{"I" if self.return_date is None else "IV"}\n"
+            f"c0-e13=string:{"I" if self.return_date is None else "IV"}{nl}"
             "c0-e14=string:\n"
             "c0-param0=Object_Object:{atendo:reference:c0-e1, sinEnlace:reference:c0-e2, "
             "plazaH:reference:c0-e3, tipoFranjaI:reference:c0-e4, tipoFranjaV:reference:c0-e5, "
@@ -302,10 +303,10 @@ class Scraper:
             ":c0-e8, fechaVuelta:reference:c0-e9, adultos:reference:c0-e10, ninos:reference:c0-e11,"
             " ninosMenores:reference:c0-e12, trayecto:reference:c0-e13, idaVuelta:reference:c0-e14}"
             "\n"
-            f"batchId={next(self.batch_id)}\n"
+            f"batchId={next(self.batch_id)}{nl}"
             "instanceId=0\n"
-            f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}\n"
-            f"scriptSessionId={self.script_session_id}\n"
+            f"page=%2Fvol%2FbuscarTrenEnlaces.do%3Fc%3D{self.search_id}{nl}"
+            f"scriptSessionId={self.script_session_id}{nl}"
         )
         return payload
 

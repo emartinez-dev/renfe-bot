@@ -14,6 +14,7 @@ from models import StationRecord, TrainRideFilter, TrainRideRecord
 from scraper import Scraper
 from storage import StationsStorage
 
+nl = "\n"
 
 def init_bot() -> None:
     """Assist the user to initialize the configuration of the bot."""
@@ -175,8 +176,8 @@ def ask_for_origin(message: telebot.types.Message, context):
                 bot.send_message(
                     message.chat.id,
                     (
-                        f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
-                        f"{'\n'.join(possible_stations)}."
+                        f"No he encontrado la estación {message.text} pero he encontrado estas: {nl}"
+                        f"{nl.join(possible_stations)}."
                         "\nPor favor, introduce la tuya de nuevo"
                     ),
                 )
@@ -201,8 +202,8 @@ def ask_for_destination(message: telebot.types.Message, context):
                 bot.send_message(
                     message.chat.id,
                     (
-                        f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
-                        f"{'\n'.join(possible_stations)}."
+                        f"No he encontrado la estación {message.text} pero he encontrado estas: {nl}"
+                        f"{nl.join(possible_stations)}."
                         "\nPor favor, introduce la tuya de nuevo"
                     ),
                 )
@@ -326,7 +327,7 @@ def get_tickets_message(
 ):
     message = (
         f"He encontrado varios billetes de {origin.name.capitalize()} a "
-        f"{destination.name.capitalize()}:\n\n"
+        f"{destination.name.capitalize()}:{nl}{nl}"
     )
     for train in trains:
         message += str(train)

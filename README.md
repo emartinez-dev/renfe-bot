@@ -10,8 +10,6 @@
 | ![Python >= 3.12](https://img.shields.io/badge/python-%3E%3D%203.12-blue.svg) | ![Linux](https://img.shields.io/badge/platform-Linux-blue.svg) ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg) ![Windows](https://img.shields.io/badge/platform-Windows-brightgreen.svg) |
 
 
-**También puedes leer esto en [Español](./docs/README_ES.md)**
-
 ## Description
 
 Renfe-bot is a Telegram bot designed to assist users in purchasing train tickets
@@ -30,25 +28,37 @@ command should work. If the issue persists, please open an issue on GitHub.
 
 #### Requirements
 
-This project requires at least Python 3.12.
-
-The required dependencies to run this project are included in the
-`requirements.txt` file. To install the requirements, use the following command:
-
-```bash
-pip install -r requirements.txt
-```
+This project requires at least Python 3.12, and it runs on macOS, Linux and
+Windows.
 
 #### Installation
 
 Follow the below steps to install and set up the Renfe-bot:
 
-1. Clone this repository to your local machine.
-2. Install the required dependencies using the command mentioned in the
-   'Requirements' section.
-3. Run the bot by executing it (`PYTHONPATH=src/ python src/bot.py`).
-4. Anything required like the API key will be prompted for when you run the bot
-   for the first time.
+Clone this repository to your local machine or download the code
+```bash
+git clone git@github.com:emartinez-dev/renfe-bot.git
+```
+
+Install the required dependencies using the following command
+```bash
+pip install -r requirements.txt
+```
+
+Run the bot by executing it with this command
+
+```bash
+PYTHONPATH=src/ python src/bot.py
+```
+
+or this one if you are on Windows command prompt
+
+```bash
+setx PYTHONPATH src/
+python src/bot.py
+```
+
+Anything required like the API key will be prompted for when you run the bot   for the first time.
 
 ### Option B: Running it as a Docker container 
 

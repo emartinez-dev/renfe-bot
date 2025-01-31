@@ -21,7 +21,7 @@ command should work. If the issue persists, please open an issue on GitHub.
 #### Requirements
 
 This project has been developed using the latest Python version available at the moment
-(`3.12.7`). It's possible that it works for older Python 3 versions, but I didn't test it.
+(`3.13.1`). It's possible that it works for older Python 3 versions, but I didn't test it.
 
 The required dependencies to run this project are included in the
 `requirements.txt` file. To install the requirements, use the following command:

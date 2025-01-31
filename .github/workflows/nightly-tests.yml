@@ -3,6 +3,7 @@ name: Nightly Tests
 on:
   schedule:
     - cron: "0 0 * * *" # This runs at midnight UTC every day
+  workflow_dispatch:
 
 jobs:
   test:

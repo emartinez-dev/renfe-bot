@@ -1,16 +1,17 @@
 import itertools
 import json
+from pathlib import Path
+from typing import Any, Dict, List, Iterable, Optional
 
 from thefuzz import process
-from typing import Any, Dict, List, Iterable, Optional
 
 from errors import StationNotFound
 from models import StationRecord
 
-STATIONS_PATH = "../assets/stations.json"
+STATIONS_PATH = Path("assets/stations.json")
 
 
-def load_json(path: str) -> Dict[str, Any]:
+def load_json(path: Path) -> Dict[str, Any]:
     """Read a JSON from a given path and return it's content as a dict
 
     :param path: Where the JSON file is located

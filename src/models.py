@@ -29,10 +29,9 @@ class TrainRideRecord(BaseModel):
 
     def __str__(self):
         date_format = "%H:%M"
-        nl = "\n"
         return (
             f"🚆 Tren {self.train_type}: 🕒 {self.departure_time.strftime(date_format)} - "
-            f"{self.arrival_time.strftime(date_format)} 🕙 - {self.price:.2f} €{nl}"
+            f"{self.arrival_time.strftime(date_format)} 🕙 - {self.price:.2f} €\n"
         )
 
     def  _repr__(self):

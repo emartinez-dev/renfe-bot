@@ -37,7 +37,7 @@ Follow the below steps to install and set up the Renfe-bot:
 1. Clone this repository to your local machine.
 2. Install the required dependencies using the command mentioned in the
    'Requirements' section.
-3. Run the bot by executing it (`python src/bot.py`).
+3. Run the bot by executing it (`PYTHONPATH=src/ python src/bot.py`).
 4. Anything required like the API key will be prompted for when you run the bot
    for the first time.
 

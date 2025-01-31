@@ -20,7 +20,7 @@ command should work. If the issue persists, please open an issue on GitHub.
 
 #### Requirements
 
-This project requires at least Python 3.11.
+This project requires at least Python 3.12.
 
 The required dependencies to run this project are included in the
 `requirements.txt` file. To install the requirements, use the following command:

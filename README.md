@@ -1,4 +1,14 @@
 # renfe-bot
+[![CI](https://github.com/emartinez-dev/renfe-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/emartinez-dev/renfe-bot/actions/workflows/ci.yml)
+[![Nightly Tests](https://github.com/emartinez-dev/renfe-bot/actions/workflows/nightly-tests.yml/badge.svg)](https://github.com/emartinez-dev/renfe-bot/actions/workflows/nightly-tests.yml)
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Femartinez-dev%2Frenfe-bot%2Fmaster%2Fpyproject.toml)
+[![codecov](https://codecov.io/gh/emartinez-dev/renfe-bot/graph/badge.svg?token=L39OAEL5MD)](https://codecov.io/gh/emartinez-dev/renfe-bot)
+![license](https://img.shields.io/github/license/emartinez-dev/renfe-bot.svg)
+
+| Python Version Support | Supported Platforms |
+|-------------------------|---------------------|
+| ![Python >= 3.12](https://img.shields.io/badge/python-%3E%3D%203.12-blue.svg) | ![Linux](https://img.shields.io/badge/platform-Linux-blue.svg) ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg) ![Windows](https://img.shields.io/badge/platform-Windows-brightgreen.svg) |
+
 
 **También puedes leer esto en [Español](./docs/README_ES.md)**
 

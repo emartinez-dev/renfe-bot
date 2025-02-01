@@ -5,11 +5,12 @@ from textwrap import dedent
 
 import requests
 
+CONFIG_FILE = "config.ini"
 
 def init_bot() -> None:
     """Assist the user to initialize the configuration of the bot."""
     config = configparser.ConfigParser()
-    config.read("config.ini")
+    config.read(CONFIG_FILE)
 
     if "Telegram" not in config:
         print(
@@ -54,7 +55,7 @@ def init_bot() -> None:
             else:
                 print("Ha ocurrido un error, vuelve a intentarlo")
 
-    with open("config.ini", "w", encoding="utf-8") as configfile:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as configfile:
         config.write(configfile)
 
 
@@ -66,10 +67,10 @@ def get_bot_token() -> str:
     :rtype: str
     """
     config = configparser.ConfigParser()
-    config.read("config.ini")
+    config.read(CONFIG_FILE)
 
     if "Telegram" not in config or "secret_token" not in config["Telegram"]:
         init_bot()
-        config.read("config.ini")
+        config.read(CONFIG_FILE)
 
     return config["Telegram"]["secret_token"]

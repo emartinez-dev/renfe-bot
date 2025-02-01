@@ -48,7 +48,7 @@ print("Ya estoy corriendo! Corre a Telegram e interactúa conmigo con los comand
 
 
 @bot.message_handler(commands=["start"])
-async def send_welcome(message: Message):
+async def send_welcome(message: Message, state: StateContext):
     """Sends a welcome message to the user who initiated the conversation."""
     assert message.from_user is not None
     username = message.from_user.first_name
@@ -75,24 +75,42 @@ def send_retry(message: Message):
         search_trains(message, context)
     except FileNotFoundError:
         bot.send_message(message.chat.id, "No hay ninguna búsqueda anterior")
+'''
+
+
+@bot.message_handler(commands=["cancelar"], state=SearchStates.searching)
+async def send_cancel(message: Message, state: StateContext):
+    """Cancels the ongoing search and resets the state."""
+    await bot.send_message(message.chat.id, msg["cancel"])
+    # TODO: cancel the search process
+    await state.delete()
 
 
 @bot.message_handler(commands=["cancelar"])
-def send_cancel(message: Message):
-    global searching
-    if searching:
-        bot.send_message(message.chat.id, "La búsqueda en curso ha sido cancelada")
-        searching = False
-    else:
-        bot.send_message(message.chat.id, "No hay ninguna búsqueda en curso")
-'''
+async def send_cancel_no_search(message: Message, state: StateContext):
+    """Cancels the parameter inputs and resets the state."""
+    await bot.send_message(message.chat.id, msg["cancel_params"])
+    await state.delete()
+
+
+@bot.message_handler(commands=["buscar"], state=SearchStates.searching)
+async def start_search_unavailable(message: Message, state: StateContext):
+    """Starts the search process by asking the user for the origin station."""
+    await bot.send_message(message.chat.id, msg["search_already_running"])
+
+
+@bot.message_handler(commands=["debug"])
+async def debug(message: Message, state: StateContext):
+    """Debug the current state and data."""
+    st = await state.get()
+    await bot.send_message(message.chat.id, st)
+
 
 @bot.message_handler(commands=["buscar"])
 async def start_search(message: Message, state: StateContext):
     """Starts the search process by asking the user for the origin station."""
     assert message.from_user is not None
     await state.set(SearchStates.origin)
-    await state.add_data(user_id=message.from_user.id)
     await bot.send_message(message.chat.id, msg["start"])
 
 
@@ -139,7 +157,7 @@ async def departure_date_get(message: Message, state: StateContext):
 async def return_get(message: Message, state: StateContext):
     """Gets the user's choice about needing a return ticket and asks for the date if he needs."""
     if message.text is not None and message.text.lower() in ["si", "s", "y", "yes"]:
-        await state.set(SearchStates.departure_date)
+        await state.set(SearchStates.return_date)
         await bot.send_message(message.chat.id, msg["return_date"])
     else:
         await state.set(SearchStates.needs_filter)

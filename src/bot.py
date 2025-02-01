@@ -42,40 +42,27 @@ class SearchContext(BaseModel):
 
 
 TOKEN = get_bot_token()
-bot = telebot.TeleBot(TOKEN)
-searching = False
+state_storage = StateMemoryStorage()  # TODO: Don't use this in production, (idk why, but use redis)
+bot = async_telebot.AsyncTeleBot(TOKEN, state_storage=state_storage)
 print("Ya estoy corriendo! Corre a Telegram e interactúa conmigo con los comandos /start o /help")
 
 
 @bot.message_handler(commands=["start"])
-def send_welcome(message: telebot.types.Message):
+async def send_welcome(message: Message):
+    """Sends a welcome message to the user who initiated the conversation."""
     assert message.from_user is not None
-    bot.send_message(
-        message.chat.id,
-        dedent(
-            f"Hola {message.from_user.first_name}. "
-            "Bienvenido a tu bot de Renfe. Te ayudaré a encontrar "
-            "billetes de tren para tus viajes. Para empezar, escribe "
-            "/ayuda para ver los comandos disponibles."
-        ),
-    )
+    username = message.from_user.first_name
+    await bot.send_message(message.chat.id, msg["welcome"].format(username))
 
 
 @bot.message_handler(commands=["ayuda"])
-def send_help(message: telebot.types.Message):
-    bot.send_message(
-        message.chat.id,
-        dedent("""\
-        /ayuda - Muestra los comandos disponibles
-        /buscar - Busca billetes de tren
-        /reintentar - Vuelve a lanzar la última búsqueda
-        /cancelar - Cancela la búsqueda en curso
-        """),
-    )
+async def send_help(message: Message):
+    """Sends a help message to the user who requested it."""
+    await bot.send_message(message.chat.id, msg["help"])
 
-
+'''
 @bot.message_handler(commands=["reintentar"])
-def send_retry(message: telebot.types.Message):
+def send_retry(message: Message):
     if searching:
         bot.send_message(
             message.chat.id,
@@ -91,193 +78,129 @@ def send_retry(message: telebot.types.Message):
 
 
 @bot.message_handler(commands=["cancelar"])
-def send_cancel(message: telebot.types.Message):
+def send_cancel(message: Message):
     global searching
     if searching:
         bot.send_message(message.chat.id, "La búsqueda en curso ha sido cancelada")
         searching = False
     else:
         bot.send_message(message.chat.id, "No hay ninguna búsqueda en curso")
-
+'''
 
 @bot.message_handler(commands=["buscar"])
-def start_user_search(message: telebot.types.Message):
+async def start_search(message: Message, state: StateContext):
+    """Starts the search process by asking the user for the origin station."""
     assert message.from_user is not None
-    if searching:
-        bot.send_message(
-            message.chat.id,
-            "Ya hay una búsqueda en curso, por favor espera o utiliza /cancelar para cancelarla",
-        )
-        return
-    context = {"user_id": message.from_user.id}
-    bot.send_message(message.chat.id, "🚉 ¿Desde qué estación sales?")
-    bot.register_next_step_handler(message, ask_for_origin, context)
+    await state.set(SearchStates.origin)
+    await state.add_data(user_id=message.from_user.id)
+    await bot.send_message(message.chat.id, msg["start"])
 
 
-def ask_for_origin(message: telebot.types.Message, context):
-    try:
-        if message.text is None:
-            raise StationNotFound
-        station = StationsStorage.get_station(message.text.upper())
-        context["origin"] = station
-        bot.send_message(message.chat.id, "🚉 ¿A qué estación vas?")
-        bot.register_next_step_handler(message, ask_for_destination, context)
+@bot.message_handler(state=SearchStates.origin)
+async def origin_get(message: Message, state: StateContext):
+    """Gets the origin station from the user and asks for the destination station."""
+    origin = validate_station(message)
 
-    except StationNotFound:
-        if message.text is not None:
-            possible_stations = StationsStorage.find_station(message.text)
-            if len(possible_stations) == 0:
-                bot.send_message(message.chat.id, user_messages["station_not_found"])
-            else:
-                bot.send_message(
-                    message.chat.id,
-                    (
-                        f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
-                        f"{'\n'.join(possible_stations)}."
-                        "\nPor favor, introduce la tuya de nuevo"
-                    ),
-                )
-        bot.register_next_step_handler(message, ask_for_origin, context)
-
-
-def ask_for_destination(message: telebot.types.Message, context):
-    try:
-        if message.text is None:
-            raise StationNotFound
-        station = StationsStorage.get_station(message.text.upper())
-        context["destination"] = station
-        bot.send_message(message.chat.id, "📅 ¿Cuándo sales? (dd/mm/aaaa)")
-        bot.register_next_step_handler(message, ask_for_departure_date, context)
-
-    except StationNotFound:
-        if message.text is not None:
-            possible_stations = StationsStorage.find_station(message.text)
-            if len(possible_stations) == 0:
-                bot.send_message(message.chat.id, user_messages["station_not_found"])
-            else:
-                bot.send_message(
-                    message.chat.id,
-                    (
-                        f"No he encontrado la estación {message.text} pero he encontrado estas: \n"
-                        f"{'\n'.join(possible_stations)}."
-                        "\nPor favor, introduce la tuya de nuevo"
-                    ),
-                )
-        bot.register_next_step_handler(message, ask_for_destination, context)
-
-
-def ask_for_departure_date(message: telebot.types.Message, context):
-    assert message.text is not None
-    date = [int(x) for x in message.text.split("/")]
-    if len(date) == 3:
-        day, month, year = date
-        try:
-            context["departure_date"] = datetime(year, month, day)
-            bot.send_message(message.chat.id, "🔙 ¿Necesitas billete de vuelta? (S/N)")
-            bot.register_next_step_handler(message, ask_for_return, context)
-        except ValueError:
-            bot.send_message(message.chat.id, user_messages["wrong_date"])
-            bot.register_next_step_handler(message, ask_for_departure_date, context)
+    if not origin:
+        await bot.send_message(message.chat.id, origin.error_message)
     else:
-        bot.send_message(message.chat.id, user_messages["wrong_date"])
-        bot.register_next_step_handler(message, ask_for_departure_date, context)
+        await state.set(SearchStates.destination)
+        await state.add_data(origin=origin.station)
+        await bot.send_message(message.chat.id, msg["destination"])
 
 
-def ask_for_return(message: telebot.types.Message, context):
-    assert message.text is not None
-    if message.text.lower() in ["si", "s", "y", "yes"]:
-        bot.send_message(message.chat.id, "📅 ¿Cuándo vuelves? (dd/mm/aaaa)")
-        bot.register_next_step_handler(message, ask_for_return_date, context)
+@bot.message_handler(state=SearchStates.destination)
+async def destination_get(message: Message, state: StateContext):
+    """Gets the destination station from the user and asks for the departure date."""
+    destination = validate_station(message)
+
+    if not destination:
+        await bot.send_message(message.chat.id, destination.error_message)
     else:
-        context["return_date"] = None
-        bot.send_message(
-            message.chat.id, "¿Quieres filtrar los resultados (hora, precio...)? (S/N)"
-        )
-        bot.register_next_step_handler(message, ask_for_filter, context)
+        await state.set(SearchStates.departure_date)
+        await state.add_data(destination=destination.station)
+        await bot.send_message(message.chat.id, msg["destination_date"])
 
 
-def ask_for_return_date(message: telebot.types.Message, context):
-    assert message.text is not None
-    date = [int(x) for x in message.text.split("/")]
-    if len(date) == 3:
-        day, month, year = date
-        try:
-            context["return_date"] = datetime(year, month, day)
-            bot.send_message(
-                message.chat.id, "¿Quieres filtrar los resultados (hora, precio...)? (S/N)"
-            )
-            bot.register_next_step_handler(message, ask_for_filter, context)
-        except ValueError:
-            bot.send_message(message.chat.id, user_messages["wrong_date"])
-            bot.register_next_step_handler(message, ask_for_return_date, context)
+@bot.message_handler(state=SearchStates.departure_date)
+async def departure_date_get(message: Message, state: StateContext):
+    """Gets the departure date from the user and asks if they need a return ticket."""
+    departure_datetime = validate_date(message)
+
+    if not departure_datetime:
+        await bot.send_message(message.chat.id, departure_datetime.error_message)
     else:
-        bot.send_message(message.chat.id, user_messages["wrong_date"])
-        bot.register_next_step_handler(message, ask_for_return_date, context)
+        await state.set(SearchStates.needs_return)
+        await state.add_data(departure_datetime=departure_datetime.date)
+        await bot.send_message(message.chat.id, msg["needs_return"])
 
 
-def ask_for_filter(message: telebot.types.Message, context):
-    assert message.text is not None
-    if message.text.lower() in ["si", "s", "y", "yes"]:
-        bot.send_message(
-            message.chat.id, "💵 ¿Precio máximo? (introduce 0 si no quieres filtrar por precio)"
-        )
-        bot.register_next_step_handler(message, ask_for_max_price, context)
+@bot.message_handler(state=SearchStates.needs_return)
+async def return_get(message: Message, state: StateContext):
+    """Gets the user's choice about needing a return ticket and asks for the date if he needs."""
+    if message.text is not None and message.text.lower() in ["si", "s", "y", "yes"]:
+        await state.set(SearchStates.departure_date)
+        await bot.send_message(message.chat.id, msg["return_date"])
     else:
-        search_trains(message, context)
+        await state.set(SearchStates.needs_filter)
+        await bot.send_message(message.chat.id, msg["needs_filter"])
 
 
-def ask_for_max_price(message: telebot.types.Message, context):
-    assert message.text is not None
-    max_price = int(message.text)
-    context["max_price"] = None if max_price == 0 else max_price
-    bot.send_message(
-        message.chat.id,
-        "⏳ ¿Duración máxima del trayecto? (en minutos)",
-    )
-    bot.register_next_step_handler(message, get_max_duration, context)
+@bot.message_handler(state=SearchStates.return_date)
+async def return_date_get(message: Message, state: StateContext):
+    """Gets the return date from the user and asks if they want to filter the results."""
+    return_datetime = validate_date(message)
 
-
-def get_max_duration(message: telebot.types.Message, context):
-    assert message.text is not None
-    context["max_duration_minutes"] = int(message.text)
-    bot.send_message(message.chat.id, "🕒 ¿A partir de qué hora quieres salir? (hh:mm)")
-    bot.register_next_step_handler(message, ask_for_min_departure_hour, context)
-
-
-def ask_for_min_departure_hour(message: telebot.types.Message, context):
-    assert message.text is not None
-    h, m = message.text.split(":")
-    context["min_departure_hour"] = time(int(h), int(m))
-    bot.send_message(message.chat.id, "🕒 ¿Y como muy tarde? (hh:mm)")
-    bot.register_next_step_handler(message, ask_for_max_departure_hour, context)
-
-
-def ask_for_max_departure_hour(message: telebot.types.Message, context):
-    assert message.text is not None
-    h, m = message.text.split(":")
-    context["max_departure_hour"] = time(int(h), int(m))
-    if context.get("return_date", None) is None:
-        search_trains(message, context)
+    if not return_datetime:
+        await bot.send_message(message.chat.id, return_datetime.error_message)
     else:
-        bot.send_message(message.chat.id, "🕒 ¿A partir de qué hora quieres volver? (hh:mm)")
-        bot.register_next_step_handler(message, ask_for_min_return_hour, context)
+        await state.set(SearchStates.needs_filter)
+        await state.add_data(return_datetime=return_datetime.date)
+        await bot.send_message(message.chat.id, msg["needs_filter"])
 
 
-def ask_for_min_return_hour(message: telebot.types.Message, context):
-    assert message.text is not None
-    h, m = message.text.split(":")
-    context["min_return_hour"] = time(int(h), int(m))
-    bot.send_message(message.chat.id, "🕒 ¿Y como muy tarde? (hh:mm)")
-    bot.register_next_step_handler(message, ask_for_max_return_hour, context)
+@bot.message_handler(state=SearchStates.needs_filter)
+async def ask_for_filter(message: Message, state: StateContext):
+    """Asks the user if they want to filter the results and starts the search process if not."""
+    if message.text is not None and message.text.lower() in ["si", "s", "y", "yes"]:
+        await state.set(SearchStates.max_price)
+        await bot.send_message(message.chat.id, msg["max_price"])
+    else:
+        await state.set(SearchStates.searching)
+        await bot.send_message(message.chat.id, msg["searching"])
+        async with state.data() as data: # type: ignore
+            await bot.send_message(message.chat.id, data)
 
 
-def ask_for_max_return_hour(message: telebot.types.Message, context):
-    assert message.text is not None
-    h, m = message.text.split(":")
-    context["max_return_hour"] = time(int(h), int(m))
-    search_trains(message, context)
+@bot.message_handler(state=SearchStates.max_price)
+async def ask_for_max_price(message: Message, state: StateContext):
+    """Asks the user for the maximum price and starts the search process."""
+    parsed = validate_float(message)
+
+    if not parsed:
+        await bot.send_message(message.chat.id, parsed.error_message)
+    else:
+        await state.set(SearchStates.max_duration_minutes)
+        await state.add_data(max_price=None if parsed.number == 0 else parsed.number)
+        await bot.send_message(message.chat.id, msg["max_duration"])
 
 
+@bot.message_handler(state=SearchStates.max_duration_minutes)
+async def get_max_duration(message: Message, state: StateContext):
+    """Gets the maximum duration of the trip and starts the search process."""
+    parsed = validate_float(message)
+
+    if not parsed:
+        await bot.send_message(message.chat.id, parsed.error_message)
+    else:
+        await state.set(SearchStates.searching)
+        await state.add_data(max_duration=None if parsed.number == 0 else parsed.number)
+        await bot.send_message(message.chat.id, msg["searching"])
+        st = await state.get()
+        await bot.send_message(message.chat.id, st)
+
+
+'''
 def get_tickets_message(
     trains: List[TrainRideRecord], origin: StationRecord, destination: StationRecord
 ):
@@ -290,7 +213,7 @@ def get_tickets_message(
     return message
 
 
-def search_trains(message: telebot.types.Message, context: Dict[str, Any]):
+def search_trains(message: Message, context: Dict[str, Any]):
     global searching
     searching = True
     bot.send_message(message.chat.id, "🔎 Buscando billetes...")
@@ -380,6 +303,9 @@ def search_trains(message: telebot.types.Message, context: Dict[str, Any]):
         bot.send_message(
             message.chat.id, f"Oops, algo se ha roto y no sé el qué. Aquí va toda la traza: {e}"
         )
+'''
 
+bot.add_custom_filter(asyncio_filters.StateFilter(bot))
+bot.setup_middleware(StateMiddleware(bot))
 
-bot.polling()
+asyncio.run(bot.infinity_polling())

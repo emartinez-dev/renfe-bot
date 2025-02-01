@@ -336,8 +336,7 @@ def extract_dwr_token(response_text: str) -> str:
 
     if match:
         return match.group(1)
-    else:
-        raise InvalidDWRToken
+    raise InvalidDWRToken
 
 
 def extract_train_list(response_text: str) -> Dict[str, Any]:

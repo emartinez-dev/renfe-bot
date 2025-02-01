@@ -1,9 +1,19 @@
-"""Module to contain all reusable messages sent to the user"""
+"""This module contains the messages that the bot sends to the user"""
 
 user_messages = {
-    "station_not_found": (
-        "No he entendido a qué estación te refieres, por favor introdúcela como aparece "
-        "en la web de Renfe."
-    ),
-    "wrong_date": "Fecha incorrecta, introdúcela de nuevo."
+    "welcome": "Hola {}. Bienvenido a tu bot de Renfe. Te ayudaré a encontrar billetes de tren para tus viajes. Para empezar, escribe /ayuda para ver los comandos disponibles.",
+    "help": "/ayuda - Muestra los comandos disponibles\n/buscar - Busca billetes de tren\n/reintentar - Vuelve a lanzar la última búsqueda\n/cancelar - Cancela la búsqueda en curso.",
+    "start": "🚉 ¿Desde qué estación sales?",
+    "destination": "🚉 ¿A qué estación vas?",
+    "station_invalid": "Por favor, introduce el nombre de una estación válida.",
+    "destination_date": "📅 ¿Qué día y a partir de qué hora sales?",
+    "return_date": "📅 ¿Qué día y a partir de qué hora vuelves?",
+    "needs_return": "🔙 ¿Necesitas billete de vuelta?",
+    "needs_filter": "🔍 ¿Quieres filtrar los resultados (precio, duración)?",
+    "max_price": "💵 ¿Precio máximo? (introduce 0 si no quieres filtrar por precio)",
+    "max_duration": "⏳ ¿Duración máxima? (introduce 0 si no quieres filtrar por duración)",
+    "searching": "🔎 Buscando billetes...",
+    "station_not_found": "No he encontrado la estación {}, pero he encontrado estas:\n{}\nPor favor, introduce la tuya de nuevo.",
+    "wrong_date": "La fecha es incorrecta, introdúcela de nuevo.",
+    "wrong_number": "Número incorrecto, introdúcelo de nuevo.",
 }

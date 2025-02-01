@@ -1,3 +1,5 @@
+"""This module contains the models used in the application"""
+
 from datetime import datetime, time
 from typing import List, Optional
 

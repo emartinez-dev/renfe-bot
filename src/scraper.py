@@ -97,8 +97,8 @@ class Scraper:
                 train_record = TrainRideRecord(
                     origin=origin,
                     destination=destination,
-                    departure_time=self._add_hour_to_datatime(train["horaSalida"], departure_time),
-                    arrival_time=self._add_hour_to_datatime(train["horaLlegada"], departure_time),
+                    departure_time=self._change_datetime_hour(train["horaSalida"], departure_time),
+                    arrival_time=self._change_datetime_hour(train["horaLlegada"], departure_time),
                     duration=train["duracionViajeTotalEnMinutos"],
                     price=float(price.replace(",", ".")),
                     available=self._is_train_available(train),
@@ -124,11 +124,10 @@ class Scraper:
         )
 
     @staticmethod
-    def _add_hour_to_datatime(hour: str, date: datetime) -> datetime:
+    def _change_datetime_hour(hour: str, date: datetime) -> datetime:
         """Add an hour to a date"""
-        hours, minutes = map(int, hour.split(":"))
-        time_delta = timedelta(hours=hours, minutes=minutes)
-        return date + time_delta
+        hours, minute = map(int, hour.split(":"))
+        return date.replace(hour=hours, minute=minute)
 
     def _do_search(self) -> None:
         """Encapsulate the API calls that must be done to input the Renfe search page"""

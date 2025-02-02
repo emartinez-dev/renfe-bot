@@ -61,7 +61,8 @@ def validate_station(message: Message) -> StationValidationResult:
     except StationNotFound:
         possible_stations = StationsStorage.find_station(station_name)
         error_message = (
-            msg["station_not_found"].format(station_name, "\n".join(possible_stations).capitalize())
+            msg["station_not_found"].format(station_name,
+                                            "\n".join(map(str.title, possible_stations)))
             if possible_stations
             else msg["station_invalid"]
         )

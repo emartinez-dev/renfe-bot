@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime
+from typing import Any, Dict
 
 from pydantic import BaseModel
 from telebot import async_telebot, asyncio_filters
@@ -12,8 +13,10 @@ from telebot.states.asyncio.middleware import StateMiddleware
 from telebot.types import Message
 
 from config import get_bot_token
-from messages import user_messages as msg
-from models import StationRecord
+from errors import InvalidDWRToken, InvalidTrainRideFilter
+from messages import user_messages as msg, get_tickets_message
+from models import TrainRideFilter, StationRecord
+from scraper import Scraper
 from validators import validate_station, validate_date, validate_float
 
 
@@ -59,24 +62,6 @@ async def send_welcome(message: Message, state: StateContext):
 async def send_help(message: Message):
     """Sends a help message to the user who requested it."""
     await bot.send_message(message.chat.id, msg["help"])
-
-'''
-@bot.message_handler(commands=["reintentar"])
-def send_retry(message: Message):
-    if searching:
-        bot.send_message(
-            message.chat.id,
-            "Ya hay una búsqueda en curso, por favor espera o utiliza /cancelar para cancelarla",
-        )
-        return
-    try:
-        with open("last_input.pkl", "rb") as f:
-            context = pickle.load(f)
-        search_trains(message, context)
-    except FileNotFoundError:
-        bot.send_message(message.chat.id, "No hay ninguna búsqueda anterior")
-'''
-
 
 @bot.message_handler(commands=["cancelar"], state=SearchStates.searching)
 async def send_cancel(message: Message, state: StateContext):
@@ -148,8 +133,13 @@ async def departure_date_get(message: Message, state: StateContext):
     if not departure_datetime:
         await bot.send_message(message.chat.id, departure_datetime.error_message)
     else:
+        assert departure_datetime.date is not None
+        await bot.send_message(
+            message.chat.id,
+            msg["confirm_date"].format(departure_datetime.date.strftime("%d/%m/%Y %H:%M")),
+        )
         await state.set(SearchStates.needs_return)
-        await state.add_data(departure_datetime=departure_datetime.date)
+        await state.add_data(departure_date=departure_datetime.date)
         await bot.send_message(message.chat.id, msg["needs_return"])
 
 
@@ -172,8 +162,13 @@ async def return_date_get(message: Message, state: StateContext):
     if not return_datetime:
         await bot.send_message(message.chat.id, return_datetime.error_message)
     else:
+        assert return_datetime.date is not None
+        await bot.send_message(
+            message.chat.id,
+            msg["confirm_date"].format(return_datetime.date.strftime("%d/%m/%Y %H:%M")),
+        )
         await state.set(SearchStates.needs_filter)
-        await state.add_data(return_datetime=return_datetime.date)
+        await state.add_data(return_date=return_datetime.date)
         await bot.send_message(message.chat.id, msg["needs_filter"])
 
 
@@ -187,7 +182,7 @@ async def ask_for_filter(message: Message, state: StateContext):
         await state.set(SearchStates.searching)
         await bot.send_message(message.chat.id, msg["searching"])
         async with state.data() as data: # type: ignore
-            await bot.send_message(message.chat.id, data)
+            await search_trains(message, state, data)
 
 
 @bot.message_handler(state=SearchStates.max_price)
@@ -214,114 +209,70 @@ async def get_max_duration(message: Message, state: StateContext):
         await state.set(SearchStates.searching)
         await state.add_data(max_duration=None if parsed.number == 0 else parsed.number)
         await bot.send_message(message.chat.id, msg["searching"])
-        st = await state.get()
-        await bot.send_message(message.chat.id, st)
+        async with state.data() as data: # type: ignore
+            await search_trains(message, state, data)
 
 
-'''
-def get_tickets_message(
-    trains: List[TrainRideRecord], origin: StationRecord, destination: StationRecord
-):
-    message = (
-        f"He encontrado varios billetes de {origin.name.capitalize()} a "
-        f"{destination.name.capitalize()}:\n\n"
-    )
-    for train in trains:
-        message += str(train)
-    return message
-
-
-def search_trains(message: Message, context: Dict[str, Any]):
-    global searching
-    searching = True
-    bot.send_message(message.chat.id, "🔎 Buscando billetes...")
+async def search_trains(message: Message, state: StateContext, ctx: Dict[str, Any]):
     departure_done = False
-    return_done = context.get("return_date", None) is None
+    return_done = ctx.get("return_date", None) is None
+
+    scraper = Scraper(ctx["origin"],
+                      ctx["destination"],
+                      ctx["departure_date"],
+                      ctx.get("return_date"))
+
+    departure_filter = TrainRideFilter(origin=ctx["origin"].name,
+                                       destination=ctx["destination"].name,
+                                       departure_date=ctx["departure_date"],
+                                       min_departure_hour=ctx.get("min_departure_hour"),
+                                       max_departure_hour=ctx.get("max_departure_hour"),
+                                       max_duration_minutes=ctx.get("max_duration_minutes"),
+                                       max_price=ctx.get("max_price"))
+
+    if not return_done:
+        return_filter = TrainRideFilter(origin=ctx["destination"].name,
+                                        destination=ctx["origin"].name,
+                                        departure_date=ctx["return_date"],
+                                        min_departure_hour=ctx.get("min_return_hour"),
+                                        max_departure_hour=ctx.get("max_return_hour"),
+                                        max_duration_minutes=ctx.get("max_duration_minutes"),
+                                        max_price=ctx.get("max_price"))
 
     try:
-        scraper = Scraper(
-            context["origin"],
-            context["destination"],
-            context["departure_date"],
-            context.get("return_date"),
-        )
-        departure_filter = TrainRideFilter(
-            origin=context["origin"].name,
-            destination=context["destination"].name,
-            departure_date=context["departure_date"],
-            min_departure_hour=context.get("min_departure_hour"),
-            max_departure_hour=context.get("max_departure_hour"),
-            max_duration_minutes=context.get("max_duration_minutes"),
-            max_price=context.get("max_price"),
-        )
-
-        if not return_done:
-            return_filter = TrainRideFilter(
-                origin=context["destination"].name,
-                destination=context["origin"].name,
-                departure_date=context.get("return_date"),
-                min_departure_hour=context.get("min_return_hour"),
-                max_departure_hour=context.get("max_return_hour"),
-                max_duration_minutes=context.get("max_duration_minutes"),
-                max_price=context.get("max_price"),
-            )
-
-        with open("last_input.pkl", "wb") as f:
-            pickle.dump(context, f)
-
         while not departure_done or not return_done:
             trains = scraper.get_trainrides()
             if not departure_done:
                 departure_trains = departure_filter.filter_rides(trains)
                 departure_done = len(departure_trains) > 0
                 if departure_done:
-                    bot.send_message(
-                        message.chat.id,
-                        get_tickets_message(
-                            departure_trains, context["origin"], context["destination"]
-                        ),
-                    )
+                    await bot.send_message(message.chat.id,
+                                           get_tickets_message(departure_trains,
+                                                               ctx["origin"],
+                                                               ctx["destination"]))
             if not return_done:
                 return_trains = return_filter.filter_rides(trains)
                 return_done = len(return_trains) > 0
                 if return_done:
-                    bot.send_message(
-                        message.chat.id,
-                        get_tickets_message(
-                            return_trains, context["destination"], context["origin"]
-                        ),
-                    )
+                    await bot.send_message(message.chat.id,
+                                           get_tickets_message(return_trains,
+                                                               ctx["destination"],
+                                                               ctx["origin"]))
             if not return_done or not departure_done:
-                time_module.sleep(60)
-        searching = False
-        print("Búsqueda completada")
+                await asyncio.sleep(60)
+        await state.delete()
 
     except InvalidTrainRideFilter:
-        searching = False
-        bot.send_message(
-            message.chat.id,
-            (
-                "El filtro introducido no es válido o no se encontró ningún tren con estos parámetros,"
-                " por favor, inténtalo de nuevo."
-            ),
-        )
+        await state.delete()
+        await bot.send_message(message.chat.id, msg["invalid_filter"])
 
     except InvalidDWRToken:
-        searching = False
-        bot.send_message(
-            message.chat.id,
-            (
-                "Si esto ocurre, Renfe ha actualizado por fin su web. Por favor, abre una issue en "
-                "github para que pueda revisarlo."
-            ),
-        )
+        await state.delete()
+        await bot.send_message(message.chat.id, msg["invalid_dwr_token"])
 
-    except BaseException as e:
-        searching = False
-        bot.send_message(
-            message.chat.id, f"Oops, algo se ha roto y no sé el qué. Aquí va toda la traza: {e}"
-        )
-'''
+    except Exception as e:
+        await state.delete()
+        await bot.send_message(message.chat.id, msg["undefined_exception"].format(str(e)))
 
 bot.add_custom_filter(asyncio_filters.StateFilter(bot))
 bot.setup_middleware(StateMiddleware(bot))

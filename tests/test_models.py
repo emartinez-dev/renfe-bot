@@ -46,8 +46,6 @@ def test_filter_rides_origin_and_destination(sample_rides):
         origin="Madrid",
         destination="Barcelona",
         departure_date=datetime(2025, 1, 30),
-        min_departure_hour=None,
-        max_departure_hour=None,
         max_duration_minutes=None,
         max_price=None
     )
@@ -61,9 +59,7 @@ def test_filter_rides_by_min_departure_hour(sample_rides):
     filter = TrainRideFilter(
         origin="Madrid",
         destination="Barcelona",
-        departure_date=datetime(2025, 1, 30),
-        min_departure_hour=time(9, 0),
-        max_departure_hour=None,
+        departure_date=datetime(2025, 1, 30, 9, 0),
         max_duration_minutes=None,
         max_price=None
     )
@@ -73,29 +69,11 @@ def test_filter_rides_by_min_departure_hour(sample_rides):
     assert len(result) == 1  # Only the third ride should pass
 
 
-def test_filter_rides_by_max_departure_hour(sample_rides):
-    filter = TrainRideFilter(
-        origin="Madrid",
-        destination="Barcelona",
-        departure_date=datetime(2025, 1, 30),
-        min_departure_hour=None,
-        max_departure_hour=time(9, 0),
-        max_duration_minutes=None,
-        max_price=None
-    )
-
-    result = filter.filter_rides(sample_rides)
-
-    assert len(result) == 1  # Only the first ride should pass
-
-
 def test_filter_rides_by_max_duration(sample_rides):
     filter = TrainRideFilter(
         origin="Madrid",
         destination="Barcelona",
         departure_date=datetime(2025, 1, 30),
-        min_departure_hour=None,
-        max_departure_hour=None,
         max_duration_minutes=180,
         max_price=None
     )
@@ -110,8 +88,6 @@ def test_filter_rides_by_max_price(sample_rides):
         origin="Madrid",
         destination="Barcelona",
         departure_date=datetime(2025, 1, 30),
-        min_departure_hour=None,
-        max_departure_hour=None,
         max_duration_minutes=None,
         max_price=55.0
     )
@@ -126,9 +102,7 @@ def test_filter_rides_no_results(sample_rides):
         origin="Madrid",
         destination="Barcelona",
         departure_date=datetime(2025, 1, 31),  # Different date
-        min_departure_hour=None,
-        max_departure_hour=None,
-        max_duration_minutes=None,
+        max_duration_minutes=1,
         max_price=None
     )
 

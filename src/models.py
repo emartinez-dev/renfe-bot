@@ -53,9 +53,6 @@ class TrainRideFilter(BaseModel):
     destination: str
 
     departure_date: datetime
-
-    min_departure_hour: Optional[time] = None
-    max_departure_hour: Optional[time] = None
     max_duration_minutes: Optional[int] = None
 
     max_price: Optional[float] = None

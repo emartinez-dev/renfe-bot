@@ -1,82 +1,102 @@
-import unittest
-from unittest.mock import patch, MagicMock
+import pytest
 from datetime import datetime
-from scraper import Scraper, extract_dwr_token, create_cookiedict, create_search_id, create_session_script_id
-from models import StationRecord
-from errors import InvalidTrainRideFilter, InvalidDWRToken
+from unittest.mock import patch, MagicMock
+from src.scraper import Scraper, extract_dwr_token, extract_train_list, create_search_id, create_session_script_id, tokenify
+from models import StationRecord, TrainRideRecord
+from errors import InvalidDWRToken, InvalidTrainRideFilter
 
-class TestScraper(unittest.TestCase):
-    def setUp(self):
-        # Setup mock data for testing
-        self.origin = StationRecord(name="Madrid", code="MAD")
-        self.destination = StationRecord(name="Barcelona", code="BCN")
-        self.departure_date = datetime(2025, 1, 31, 10, 0)
-        self.return_date = datetime(2025, 2, 1, 10, 0)
-        
-        self.scraper = Scraper(
-            origin=self.origin, 
-            destination=self.destination, 
-            departure_date=self.departure_date, 
-            return_date=self.return_date
-        )
-    
-    @patch('scraper.requests.Session.post')
-    def test_get_trainrides(self, mock_post):
-        # Mock the HTTP responses for the scraper methods
-        mock_post.return_value.ok = True
-        mock_post.return_value.text = '{"listadoTrenes": []}'  # mock response for getting train list
+@pytest.fixture
+def scraper():
+    origin = StationRecord(name="Madrid", code="MAD")
+    destination = StationRecord(name="Barcelona", code="BCN")
+    departure_date = datetime(2023, 12, 25)
+    return Scraper(origin, destination, departure_date)
 
-        # Mock necessary functions
-        self.scraper._do_search = MagicMock()
-        self.scraper._do_get_dwr_token = MagicMock()
-        self.scraper._do_update_session_objects = MagicMock()
-        self.scraper._do_get_train_list = MagicMock(return_value={"listadoTrenes": []})
+def test_create_search_id():
+    search_id = create_search_id()
+    assert len(search_id) == 5
+    assert search_id.startswith("_")
 
-        # Test if get_trainrides returns an empty list when no trains are found
-        result = self.scraper.get_trainrides()
-        self.assertEqual(result, [])
-    
-    def test_invalid_trainride_filter(self):
-        # Test the case where return_date is before departure_date
-        with self.assertRaises(InvalidTrainRideFilter):
-            Scraper(
-                origin=self.origin, 
-                destination=self.destination, 
-                departure_date=self.departure_date, 
-                return_date=datetime(2025, 1, 30, 10, 0)  # Invalid return date
-            )
-    
-    @patch('scraper.extract_dwr_token')
-    def test_extract_dwr_token(self, mock_extract_dwr_token):
-        # Test extracting the DWR token with a valid response
-        mock_response = 'throw #DWR-REPLY\nr.handleCallback("1","0","12345");'
-        mock_extract_dwr_token.return_value = '12345'
-        token = extract_dwr_token(mock_response)
-        self.assertEqual(token, '12345')
+def test_create_session_script_id():
+    dwr_token = "test_token"
+    session_script_id = create_session_script_id(dwr_token)
+    assert session_script_id.startswith(dwr_token)
 
-    def test_extract_dwr_token_invalid(self):
-        # Test extracting the DWR token with an invalid response
-        with self.assertRaises(InvalidDWRToken):
-            extract_dwr_token('Invalid response')
-    
-    def test_create_cookiedict(self):
-        # Test the creation of cookies for the search
-        cookies = create_cookiedict(self.origin, self.destination)
-        self.assertIn("Search", cookies["name"])
-        self.assertIn(self.origin.code, cookies["value"])
-    
-    def test_create_search_id(self):
-        # Test the creation of search_id
-        search_id = create_search_id()
-        self.assertTrue(search_id.startswith('_'))
-        self.assertEqual(len(search_id), 5)
-    
-    def test_create_session_script_id(self):
-        # Test the creation of session script ID
-        with patch('scraper.tokenify', return_value='test_token'):
-            script_id = create_session_script_id('dwr_token')
-            self.assertTrue(script_id.startswith('dwr_token/'))
-            self.assertIn('test_token', script_id)
+def test_tokenify():
+    number = 123456
+    token = tokenify(number)
+    assert isinstance(token, str)
 
-if __name__ == "__main__":
-    unittest.main()
+def test_extract_dwr_token():
+    response_text = 'r.handleCallback("0","0","test_token")'
+    token = extract_dwr_token(response_text)
+    assert token == "test_token"
+
+def test_extract_dwr_token_invalid():
+    response_text = 'invalid response'
+    with pytest.raises(InvalidDWRToken):
+        extract_dwr_token(response_text)
+
+def test_extract_train_list():
+    response_text = 'r.handleCallback(0,0,{"listadoTrenes":[]});'
+    train_list = extract_train_list(response_text)
+    assert "listadoTrenes" in train_list
+
+def test_invalid_return_date():
+    origin = StationRecord(name="Madrid", code="MAD")
+    destination = StationRecord(name="Barcelona", code="BCN")
+    departure_date = datetime(2023, 12, 25)
+    return_date = datetime(2023, 12, 24)
+    with pytest.raises(InvalidTrainRideFilter):
+        Scraper(origin, destination, departure_date, return_date)
+
+@patch('src.scraper.requests.Session.post')
+def test_do_search(mock_post, scraper):
+    mock_post.return_value.ok = True
+    scraper._do_search()
+    assert mock_post.called
+
+@patch('src.scraper.requests.Session.post')
+def test_do_get_dwr_token(mock_post, scraper):
+    mock_post.return_value.ok = True
+    mock_post.return_value.text = 'r.handleCallback("0","0","test_token")'
+    scraper._do_get_dwr_token()
+    assert scraper.dwr_token == "test_token"
+
+@patch('src.scraper.requests.Session.post')
+def test_do_update_session_objects(mock_post, scraper):
+    mock_post.return_value.ok = True
+    scraper.dwr_token = "test_token"
+    scraper.script_session_id = "test_script_session_id"
+    scraper._do_update_session_objects()
+    assert mock_post.called
+
+@patch('src.scraper.requests.Session.post')
+def test_do_get_train_list(mock_post, scraper):
+    mock_post.return_value.ok = True
+    mock_post.return_value.text = 'r.handleCallback(0,0,{"listadoTrenes":[]});'
+    train_list = scraper._do_get_train_list()
+    assert "listadoTrenes" in train_list
+
+def test_change_datetime_hour():
+    date = datetime(2023, 12, 25)
+    hour = "14:30"
+    new_date = Scraper._change_datetime_hour(hour, date)
+    assert new_date.hour == 14
+    assert new_date.minute == 30
+
+def test_is_train_available():
+    train = {
+        "completo": False,
+        "razonNoDisponible": "",
+        "tarifaMinima": "10.00"
+    }
+    assert Scraper._is_train_available(train)
+
+def test_is_train_not_available():
+    train = {
+        "completo": True,
+        "razonNoDisponible": "1",
+        "tarifaMinima": None
+    }
+    assert not Scraper._is_train_available(train)

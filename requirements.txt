@@ -29,6 +29,7 @@ pylint-pydantic==0.3.5
 pyTelegramBotAPI==4.24.0
 pytest==8.3.3
 pytest-cov==6.0.0
+pytest-mock==3.14.0
 python-dateutil==2.9.0.post0
 pytz==2025.1
 RapidFuzz==3.10.1

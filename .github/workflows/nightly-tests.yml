@@ -2,7 +2,7 @@ name: Nightly Tests
 
 on:
   schedule:
-    - cron: "0 0 * * *" # This runs at midnight UTC every day
+    - cron: "0 22 * * *" # This runs at 22:00 UTC every day
   workflow_dispatch:
 
 jobs:

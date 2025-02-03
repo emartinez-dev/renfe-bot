@@ -10,6 +10,8 @@
 | ![Python >= 3.12](https://img.shields.io/badge/python-%3E%3D%203.12-blue.svg) | ![Linux](https://img.shields.io/badge/platform-Linux-blue.svg) ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg) ![Windows](https://img.shields.io/badge/platform-Windows-brightgreen.svg) |
 
 
+_También puedes leer esto en [Español](https://github.com/emartinez-dev/renfe-bot/blob/master/docs/README_es.md)_
+
 ## Description
 
 Renfe-bot is a Telegram bot designed to assist users in purchasing train tickets

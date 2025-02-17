@@ -89,7 +89,8 @@ def test_is_train_available():
     train = {
         "completo": False,
         "razonNoDisponible": "",
-        "tarifaMinima": "10.00"
+        "tarifaMinima": "10.00",
+        "soloPlazaH": False
     }
     assert Scraper._is_train_available(train)
 
@@ -97,6 +98,16 @@ def test_is_train_not_available():
     train = {
         "completo": True,
         "razonNoDisponible": "1",
-        "tarifaMinima": None
+        "tarifaMinima": "10.00",
+        "soloPlazaH": False
+    }
+    assert not Scraper._is_train_available(train)
+
+def test_is_train_not_available_only_handicapped():
+    train = {
+        "completo": False,
+        "razonNoDisponible": "1",
+        "tarifaMinima": "20.25",
+        "soloPlazaH": True
     }
     assert not Scraper._is_train_available(train)

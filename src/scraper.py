@@ -121,6 +121,7 @@ class Scraper:
             not train["completo"]
             and train["razonNoDisponible"] in ["", "8"]
             and train["tarifaMinima"] is not None
+            and not train["soloPlazaH"]
         )
 
     @staticmethod

@@ -21,6 +21,10 @@ cuando alguien cancela su reserva, y avisa rápidamente a los usuarios cuando ha
 disponibles. El bot ahora es compatible con una interfaz de chatbot de Telegram
 para mejorar la interacción con el usuario.
 
+Nuevo en la versión v0.3.0: Ahora el paquete incluye una interfaz de línea de
+ocmandos ligera (CLI) para hacer búsquedas rápidas directamente desde la
+consola, perfecta para hacer scripting.
+
 La gestión de errores no es perfecta, por lo que si te encuentras con algún problema, reintentar el comando
 debería funcionar. Si el problema persiste, abre una incidencia en GitHub.
 
@@ -89,14 +93,56 @@ O si usas Windows:
 docker run -it -v %cd%:/app renfe-bot
 ```
 
+### Opción C: Usando la interfaz de línea de comandos (CLI)
+
+La CLI es la manera más rápida de buscar trenes, directamente desde la terminal.
+
+#### Inicio rápido
+
+Una vez instaladas las dependencias (ver **Opción A – Instalación**), puedes lanzar el programa con la siguiente sintaxis:
+
+```bash
+PYTHONPATH=./src python src/cli.py -o <ORIGIN> -d <DESTINATION> --departure_date DD/MM/YYYY
+```
+
+Ejemplo:
+
+```bash
+PYTHONPATH=./src python src/cli.py -o Madrid -d Barcelona --departure_date 21/06/2025
+```
+
+El programa imprime una tabla como esta:
+
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃          Trains from Madrid to Barcelona – 21/06/2025        ┃
+┡━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━┯━━━━━━━━━━━━━━┯━━━━━━━━━┯━━━━━━━┩
+│ Train type   │ Departure    │ Arrival      │ Duration │ Price │
+├──────────────┼──────────────┼──────────────┼─────────┼───────┤
+│ AVE          │ 06:30        │ 08:59        │ 2.5 h.   │ 46.90€│
+│ AVE          │ 07:30        │ 10:05        │ 2.6 h.   │ 38.15€│ ← cheaper‑than‑avg highlighted in green
+└──────────────┴──────────────┴──────────────┴─────────┴───────┘
+```
+
+#### Parámetros
+
+* **`-o, --origin`** (obligatorio) – Estación de origen.
+* **`-d, --destination`** (obligatorio) – Estación de destino.
+* **`--departure_date`** (obligatorio) – Fecha de salida en formato `DD/MM/YYYY`.
+
 
 ## Uso
 
+### Bot
 
 Para utilizar el bot, envía un mensaje a tu bot en Telegram. Tienes que proporcionar
 datos como las estaciones de origen y destino, y las fechas. El bot monitorizará
 la disponibilidad de billetes y te notificará inmediatamente cuando haya un billete
 disponible para tu viaje.
+
+### CLI
+
+See Option C above.
 
 ## Contribución
 

@@ -1,5 +1,16 @@
 [project]
+name = "renfe-bot"
+version = "0.3.0-beta"
 requires-python = ">= 3.12"
+dependencies = [
+    "dateparser>=1.2.1",
+    "json5>=0.12.0",
+    "pydantic>=2.11.7",
+    "pytest>=8.4.1",
+    "requests>=2.32.4",
+    "telebot>=0.0.5",
+    "thefuzz>=0.22.1",
+]
 
 [tool.ruff]
 line-length = 100

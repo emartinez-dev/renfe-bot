@@ -102,7 +102,7 @@ async def start_search(message: Message, state: StateContext):
 @bot.message_handler(state=SearchStates.origin)
 async def origin_get(message: Message, state: StateContext):
     """Gets the origin station from the user and asks for the destination station."""
-    origin = validate_station(message)
+    origin = validate_station(message.text)
 
     if not origin:
         await bot.send_message(message.chat.id, origin.error_message)
@@ -115,7 +115,7 @@ async def origin_get(message: Message, state: StateContext):
 @bot.message_handler(state=SearchStates.destination)
 async def destination_get(message: Message, state: StateContext):
     """Gets the destination station from the user and asks for the departure date."""
-    destination = validate_station(message)
+    destination = validate_station(message.text)
 
     if not destination:
         await bot.send_message(message.chat.id, destination.error_message)
@@ -128,7 +128,7 @@ async def destination_get(message: Message, state: StateContext):
 @bot.message_handler(state=SearchStates.departure_date)
 async def departure_date_get(message: Message, state: StateContext):
     """Gets the departure date from the user and asks if they need a return ticket."""
-    departure_datetime = validate_date(message)
+    departure_datetime = validate_date(message.text)
 
     if not departure_datetime:
         await bot.send_message(message.chat.id, departure_datetime.error_message)
@@ -157,7 +157,7 @@ async def return_get(message: Message, state: StateContext):
 @bot.message_handler(state=SearchStates.return_date)
 async def return_date_get(message: Message, state: StateContext):
     """Gets the return date from the user and asks if they want to filter the results."""
-    return_datetime = validate_date(message)
+    return_datetime = validate_date(message.text)
 
     if not return_datetime:
         await bot.send_message(message.chat.id, return_datetime.error_message)
@@ -188,7 +188,7 @@ async def ask_for_filter(message: Message, state: StateContext):
 @bot.message_handler(state=SearchStates.max_price)
 async def ask_for_max_price(message: Message, state: StateContext):
     """Asks the user for the maximum price and starts the search process."""
-    parsed = validate_float(message)
+    parsed = validate_float(message.text)
 
     if not parsed:
         await bot.send_message(message.chat.id, parsed.error_message)
@@ -201,7 +201,7 @@ async def ask_for_max_price(message: Message, state: StateContext):
 @bot.message_handler(state=SearchStates.max_duration_minutes)
 async def get_max_duration(message: Message, state: StateContext):
     """Gets the maximum duration of the trip and starts the search process."""
-    parsed = validate_float(message)
+    parsed = validate_float(message.text)
 
     if not parsed:
         await bot.send_message(message.chat.id, parsed.error_message)

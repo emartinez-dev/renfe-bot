@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
 from dataclasses import dataclass
-from validators import validate_station, validate_date, validate_float, StationValidationResult, DateValidationResult, FloatValidationResult
+from validators import validate_station, validate_date, validate_float
 from errors import StationNotFound
 from models import StationRecord
 from storage import StationsStorage
@@ -20,7 +20,7 @@ def test_validate_station_valid(mock_message, mocker):
     mock_station = StationRecord(name="Madrid", code="MAD")
     mocker.patch.object(StationsStorage, 'get_station', return_value=mock_station)
     
-    result = validate_station(mock_message)
+    result = validate_station(mock_message.text)
     
     assert result.is_valid
     assert result.station == mock_station
@@ -31,7 +31,7 @@ def test_validate_station_not_found(mock_message, mocker):
     mocker.patch.object(StationsStorage, 'get_station', side_effect=StationNotFound)
     mocker.patch.object(StationsStorage, 'find_station', return_value=["Madrid", "Barcelona"])
     
-    result = validate_station(mock_message)
+    result = validate_station(mock_message.text)
     
     assert not result.is_valid
     assert result.station is None
@@ -40,7 +40,7 @@ def test_validate_station_not_found(mock_message, mocker):
 def test_validate_station_no_text(mock_message):
     mock_message.text = None
     
-    result = validate_station(mock_message)
+    result = validate_station(mock_message.text)
     
     assert not result.is_valid
     assert result.station is None
@@ -49,7 +49,7 @@ def test_validate_station_no_text(mock_message):
 def test_validate_date_valid(mock_message):
     mock_message.text = "Hoy a las 07:00"
     
-    result = validate_date(mock_message)
+    result = validate_date(mock_message.text)
     
     assert result.is_valid
     assert result.date == datetime.now().replace(hour=7, minute=0, second=0, microsecond=0)
@@ -58,7 +58,7 @@ def test_validate_date_valid(mock_message):
 def test_validate_date_invalid(mock_message):
     mock_message.text = "invalid date"
     
-    result = validate_date(mock_message)
+    result = validate_date(mock_message.text)
     
     assert not result.is_valid
     assert result.date is None
@@ -67,7 +67,7 @@ def test_validate_date_invalid(mock_message):
 def test_validate_date_no_text(mock_message):
     mock_message.text = None
     
-    result = validate_date(mock_message)
+    result = validate_date(mock_message.text)
     
     assert not result.is_valid
     assert result.date is None
@@ -76,7 +76,7 @@ def test_validate_date_no_text(mock_message):
 def test_validate_float_valid(mock_message):
     mock_message.text = "123.45"
     
-    result = validate_float(mock_message)
+    result = validate_float(mock_message.text)
     
     assert result.is_valid
     assert result.number == 123.45
@@ -86,12 +86,12 @@ def test_validate_float_invalid(mock_message):
     mock_message.text = "invalid number"
     
     with pytest.raises(ValueError):
-        validate_float(mock_message)
+        validate_float(mock_message.text)
 
 def test_validate_float_no_text(mock_message):
     mock_message.text = None
     
-    result = validate_float(mock_message)
+    result = validate_float(mock_message.text)
     
     assert not result.is_valid
     assert result.number is None

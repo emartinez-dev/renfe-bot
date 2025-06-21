@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 import dateparser
-from telebot.types import Message
 
 from errors import StationNotFound
 from messages import user_messages as msg
@@ -47,13 +47,12 @@ class FloatValidationResult:
         return self.is_valid
 
 
-def validate_station(message: Message) -> StationValidationResult:
+def validate_station(station_name: Optional[str]) -> StationValidationResult:
     """Validates the station provided by the user, returning partial matches if the station is
     not found"""
-    if not message.text:
+    if station_name is None:
         return StationValidationResult(is_valid=False, error_message=msg["station_invalid"])
 
-    station_name = message.text
     try:
         station = StationsStorage.get_station(station_name.upper())
         return StationValidationResult(is_valid=True, station=station)
@@ -69,22 +68,23 @@ def validate_station(message: Message) -> StationValidationResult:
         return StationValidationResult(is_valid=False, error_message=error_message)
 
 
-def validate_date(message: Message) -> DateValidationResult:
+def validate_date(message: Optional[str]) -> DateValidationResult:
     """Validates the date provided by the user using the dateparser library, that supports
     creating a datetime object from a natural language string in multiple languages"""
-    if not message.text:
+    if not message:
         return DateValidationResult(is_valid=False, error_message=msg["wrong_date"])
 
-    parsed_date = dateparser.parse(message.text,
+    parsed_date = dateparser.parse(message,
                                    languages=["es", "en"],
                                    settings={"STRICT_PARSING": True})
     if parsed_date is None:
         return DateValidationResult(is_valid=False, error_message=msg["wrong_date"])
     return DateValidationResult(is_valid=True, date=parsed_date)
 
-def validate_float(message: Message) -> FloatValidationResult:
+
+def validate_float(message: Optional[str]) -> FloatValidationResult:
     """Validates the float number provided by the user"""
-    if not message.text:
+    if not message:
         return FloatValidationResult(is_valid=False, error_message=msg["wrong_number"])
-    parsed_number = float(message.text)
+    parsed_number = float(message)
     return FloatValidationResult(is_valid=True, number=parsed_number)
